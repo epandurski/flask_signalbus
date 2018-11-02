@@ -1,4 +1,11 @@
 import pytest
+import flask_signalbus as fsb
+
+
+def test_init_app(app, db, Signal):
+    signalbus = fsb.SignalBus()
+    signalbus.init_app(app, db)
+    signalbus.process_signals(Signal)
 
 
 def test_send_signal_success(db, signalbus, send_mock, Signal):
