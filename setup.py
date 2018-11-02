@@ -1,10 +1,14 @@
 """
 Flask-SignalBus
--------------
+---------------
 
 TODO
 """
+import sys
 from setuptools import setup
+
+needs_pytest = {'pytest', 'test', 'ptr'}.intersection(sys.argv)
+pytest_runner = ['pytest-runner'] if needs_pytest else []
 
 
 setup(
@@ -16,24 +20,31 @@ setup(
     author_email='epandurski@github.com',
     description='A flask extension for atomically sending messages (signals) over a message bus',
     long_description=__doc__,
-    # if you would be using a module instead use py_modules instead of packages:
-    # py_modules=['flask_signalbus'],
     packages=['flask_signalbus'],
-    zip_safe=False,
-    include_package_data=True,
+    zip_safe=True,
     platforms='any',
     python_requires='>=3.5',
+    setup_requires=pytest_runner,
     install_requires=[
-        'Flask',
-        'Flask-SQLAlchemy',
+        'Flask>=0.10',
+        'SQLAlchemy>=0.8.0',
+    ],
+    tests_require=[
+        'pytest',
+        'Flask-SQLAlchemy>=1.0',
     ],
     classifiers=[
         'Environment :: Web Environment',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: BSD License',
         'Operating System :: OS Independent',
-        'Programming Language :: Python',
         'Topic :: Internet :: WWW/HTTP :: Dynamic Content',
         'Topic :: Software Development :: Libraries :: Python Modules'
+        'Programming Language :: Python',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
     ]
 )

@@ -25,7 +25,7 @@ def get_db_error_code(exception):
     return error_code
 
 
-def retry_on_deadlock(session, retries=6, min_wait=0.1, max_wait=10.0, catch_all_errors=False):
+def retry_on_deadlock(session, retries=6, min_wait=0.1, max_wait=10.0):
     """Return a function decorator."""
 
     def decorator(action):
@@ -40,10 +40,6 @@ def retry_on_deadlock(session, retries=6, min_wait=0.1, max_wait=10.0, catch_all
                 except DBAPIError as e:
                     num_failures += 1
                     if num_failures > retries or get_db_error_code(e.orig) not in DEADLOCK_ERROR_CODES:
-                        if catch_all_errors:
-                            session.rollback()
-                            logger.exception('Caught database error while executing "retry_on_deadlock"')
-                            break
                         raise
                 session.rollback()
                 wait_seconds = min(max_wait, min_wait * 2 ** (num_failures - 1))
@@ -55,20 +51,32 @@ def retry_on_deadlock(session, retries=6, min_wait=0.1, max_wait=10.0, catch_all
 
 
 class SignalBus:
-    def __init__(self, app, db):
-        self.app = app
+    def __init__(self, app=None, db=None):
         self.db = db
+        if app is not None and db is not None:
+            self.init_app(app, db)
+
+    def init_app(self, app, db=None):
+        self.db = db or self.db
         self.signal_session = db.create_scoped_session({'expire_on_commit': False})
-        self.retry_on_deadlock = retry_on_deadlock(self.signal_session, catch_all_errors=True)
+        self.retry_on_deadlock = retry_on_deadlock(self.signal_session)
         event.listen(db.session, 'transient_to_pending', self._transient_to_pending_handler)
         event.listen(db.session, 'after_commit', self._process_models)
+        if not hasattr(app, 'extensions'):
+            app.extensions = {}
+        app.extensions['signalbus'] = self
 
     @staticmethod
     def get_set_of_models_to_process(session):
         return session.info.setdefault('flask_signalbus__models_to_process', set())
 
     def process_signals(self, model):
-        return self.retry_on_deadlock(self._process_signals)(model)
+        try:
+            return self.retry_on_deadlock(self._process_signals)(model)
+        except Exception:
+            self.signal_session.rollback()
+            self.signal_session.close()
+            raise
 
     def _transient_to_pending_handler(self, session, instance):
         model = type(instance)
@@ -79,7 +87,10 @@ class SignalBus:
     def _process_models(self, session):
         models_to_process = self.get_set_of_models_to_process(session)
         for model in models_to_process:
-            self.process_signals(model)
+            try:
+                self.process_signals(model)
+            except Exception:
+                logger.exception('Caught error while processing %s records.', model.__name__)
         models_to_process.clear()
 
     def _process_signals(self, model):
