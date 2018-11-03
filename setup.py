@@ -23,7 +23,6 @@ setup(
     packages=['flask_signalbus'],
     zip_safe=True,
     platforms='any',
-    python_requires='>=3.5',
     setup_requires=pytest_runner,
     install_requires=[
         'Flask>=0.10',
@@ -31,6 +30,7 @@ setup(
     ],
     tests_require=[
         'pytest',
+        'mock',
         'Flask-SQLAlchemy>=1.0',
     ],
     classifiers=[
@@ -41,6 +41,8 @@ setup(
         'Topic :: Internet :: WWW/HTTP :: Dynamic Content',
         'Topic :: Software Development :: Libraries :: Python Modules'
         'Programming Language :: Python',
+        'Programming Language :: Python :: 2',
+        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',

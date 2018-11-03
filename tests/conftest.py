@@ -2,7 +2,7 @@ import flask
 import pytest
 import flask_sqlalchemy as fsa
 import flask_signalbus as fsb
-from unittest.mock import Mock
+from mock import Mock
 
 
 @pytest.fixture
