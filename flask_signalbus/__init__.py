@@ -68,10 +68,6 @@ class SignalBus:
         app.extensions['signalbus'] = self
         app.cli.add_command(cli.signalbus)
 
-    @staticmethod
-    def get_set_of_models_to_process(session):
-        return session.info.setdefault('flask_signalbus__models_to_process', set())
-
     def get_signal_models(self):
         base = self.db.Model
         return [
@@ -82,10 +78,10 @@ class SignalBus:
             )
         ]
 
-    def process_signals(self, model=None):
+    def flush_signals(self, model=None):
         if model:
             try:
-                return self.retry_on_deadlock(self._process_signals)(model)
+                return self.retry_on_deadlock(self._flush_signals)(model)
             except Exception:
                 self.signal_session.rollback()
                 self.signal_session.close()
@@ -93,26 +89,26 @@ class SignalBus:
         else:
             signal_count = 0
             for m in self.get_signal_models():
-                signal_count += self.process_signals(m)
+                signal_count += self.flush_signals(m)
             return signal_count
 
     def _transient_to_pending_handler(self, session, instance):
         model = type(instance)
         if hasattr(model, 'send_signalbus_message'):
-            models_to_process = self.get_set_of_models_to_process(session)
+            models_to_process = self._get_set_of_models_to_process(session)
             models_to_process.add(model)
 
     def _process_models(self, session):
-        models_to_process = self.get_set_of_models_to_process(session)
+        models_to_process = self._get_set_of_models_to_process(session)
         for model in models_to_process:
             try:
-                self.process_signals(model)
+                self.flush_signals(model)
             except Exception:
-                logger.exception('Caught error while processing %s records.', model.__name__)
+                logger.exception('Caught error while flushing %s records.', model.__name__)
         models_to_process.clear()
 
-    def _process_signals(self, model):
-        logger.debug('Processing %s records.', model.__name__)
+    def _flush_signals(self, model):
+        logger.debug('Flushing %s records.', model.__name__)
         signal_count = 0
         for record in self.signal_session.query(model).all():
             self.signal_session.delete(record)
@@ -123,3 +119,7 @@ class SignalBus:
         self.signal_session.expire_all()
         self.signal_session.commit()
         return signal_count
+
+    @staticmethod
+    def _get_set_of_models_to_process(session):
+        return session.info.setdefault('flask_signalbus__models_to_process', set())

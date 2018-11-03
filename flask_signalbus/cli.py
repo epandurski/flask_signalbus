@@ -11,11 +11,11 @@ def signalbus():
 @signalbus.command()
 @with_appcontext
 def flush():
-    """Flushes pending signals."""
+    """Flush all pending signals."""
 
     signalbus = current_app.extensions['signalbus']
-    signal_count = signalbus.process_signals()
+    signal_count = signalbus.flush_signals()
     if signal_count == 1:
-        click.echo('{} signal has been processed.'.format(signal_count))
+        click.echo('{} signal has been successfully processed.'.format(signal_count))
     elif signal_count > 1:
-        click.echo('{} signals have been processed.'.format(signal_count))
+        click.echo('{} signals have been successfully processed.'.format(signal_count))
