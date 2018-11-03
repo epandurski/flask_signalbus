@@ -65,7 +65,8 @@ class SignalBus:
         event.listen(db.session, 'after_commit', self._process_models)
         if not hasattr(app, 'extensions'):
             app.extensions = {}
-        app.extensions['signalbus'] = self
+        signalbus_set = app.extensions.setdefault('signalbus', set())
+        signalbus_set.add(self)
         app.cli.add_command(cli.signalbus)
 
     def get_signal_models(self):
