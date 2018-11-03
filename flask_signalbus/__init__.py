@@ -26,7 +26,7 @@ def get_db_error_code(exception):
 
 
 def retry_on_deadlock(session, retries=6, min_wait=0.1, max_wait=10.0):
-    """Return a function decorator."""
+    """Return function decorator that executes the function again in case of a deadlock."""
 
     def decorator(action):
         """Function decorator that retries `action` in case of a deadlock."""
