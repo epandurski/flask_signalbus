@@ -13,7 +13,7 @@ pytest_runner = ['pytest-runner'] if needs_pytest else []
 
 setup(
     name='Flask-SignalBus',
-    version='0.98',
+    version='0.1',
     url='https://github.com/epandurski/flask_signalbus',
     license='BSD',
     author='Evgeni Pandurski',
