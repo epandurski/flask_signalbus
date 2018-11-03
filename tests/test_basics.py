@@ -34,4 +34,4 @@ def test_non_signal_model(db, send_mock, NonSignal):
     db.session.add(NonSignal())
     db.session.flush()
     db.session.commit()
-    send_mock.assert_not_called()
+    assert NonSignal.query.count() == 1
