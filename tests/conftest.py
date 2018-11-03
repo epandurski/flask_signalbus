@@ -25,6 +25,22 @@ def signalbus(app, db):
 
 
 @pytest.fixture
+def signalbus_with_pending_signal(app, db, Signal):
+    sig = Signal(name='signal', value='1')
+    db.session.add(sig)
+    db.session.commit()
+    return fsb.SignalBus(app, db)
+
+
+@pytest.fixture
+def signalbus_with_pending_error(app, db, Signal):
+    sig = Signal(name='error', value='1')
+    db.session.add(sig)
+    db.session.commit()
+    return fsb.SignalBus(app, db)
+
+
+@pytest.fixture
 def send_mock():
     return Mock()
 

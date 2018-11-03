@@ -3,6 +3,7 @@ import logging
 from functools import wraps
 from sqlalchemy import event
 from sqlalchemy.exc import DBAPIError
+from . import cli
 
 
 logger = logging.getLogger(__name__)
@@ -65,6 +66,7 @@ class SignalBus:
         if not hasattr(app, 'extensions'):
             app.extensions = {}
         app.extensions['signalbus'] = self
+        app.cli.add_command(cli.signalbus)
 
     @staticmethod
     def get_set_of_models_to_process(session):
@@ -83,14 +85,16 @@ class SignalBus:
     def process_signals(self, model=None):
         if model:
             try:
-                self.retry_on_deadlock(self._process_signals)(model)
+                return self.retry_on_deadlock(self._process_signals)(model)
             except Exception:
                 self.signal_session.rollback()
                 self.signal_session.close()
                 raise
         else:
+            signal_count = 0
             for m in self.get_signal_models():
-                self.process_signals(m)
+                signal_count += self.process_signals(m)
+            return signal_count
 
     def _transient_to_pending_handler(self, session, instance):
         model = type(instance)
@@ -109,10 +113,13 @@ class SignalBus:
 
     def _process_signals(self, model):
         logger.debug('Processing %s records.', model.__name__)
+        signal_count = 0
         for record in self.signal_session.query(model).all():
             self.signal_session.delete(record)
             self.signal_session.flush()
             record.send_signalbus_message()
             self.signal_session.commit()
+            signal_count += 1
         self.signal_session.expire_all()
         self.signal_session.commit()
+        return signal_count
