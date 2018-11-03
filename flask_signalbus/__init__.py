@@ -70,13 +70,27 @@ class SignalBus:
     def get_set_of_models_to_process(session):
         return session.info.setdefault('flask_signalbus__models_to_process', set())
 
-    def process_signals(self, model):
-        try:
-            return self.retry_on_deadlock(self._process_signals)(model)
-        except Exception:
-            self.signal_session.rollback()
-            self.signal_session.close()
-            raise
+    def get_signal_models(self):
+        base = self.db.Model
+        return [
+            cls for cls in base._decl_class_registry.values() if (
+                isinstance(cls, type) and
+                issubclass(cls, base) and
+                hasattr(cls, 'send_signalbus_message')
+            )
+        ]
+
+    def process_signals(self, model=None):
+        if model:
+            try:
+                self.retry_on_deadlock(self._process_signals)(model)
+            except Exception:
+                self.signal_session.rollback()
+                self.signal_session.close()
+                raise
+        else:
+            for m in self.get_signal_models():
+                self.process_signals(m)
 
     def _transient_to_pending_handler(self, session, instance):
         model = type(instance)
