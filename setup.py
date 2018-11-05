@@ -18,20 +18,18 @@ setup(
     license='BSD',
     author='Evgeni Pandurski',
     author_email='epandurski@github.com',
-    description='A flask extension for atomically sending messages (signals) over a message bus',
+    description='A Flask-SQLAlchemy extension for atomically sending messages (signals) over a message bus',
     long_description=__doc__,
     packages=['flask_signalbus'],
     zip_safe=True,
     platforms='any',
     setup_requires=pytest_runner,
     install_requires=[
-        'Flask>=0.10',
-        'SQLAlchemy>=0.8.0',
+        'Flask-SQLAlchemy>=1.0',
     ],
     tests_require=[
         'pytest',
         'mock',
-        'Flask-SQLAlchemy>=1.0',
     ],
     classifiers=[
         'Environment :: Web Environment',

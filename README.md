@@ -1,2 +1,2 @@
 # flask_signalbus
-A flask extension for atomically sending messages (signals) over a message bus
+A Flask-SQLAlchemy extension for atomically sending messages (signals) over a message bus
