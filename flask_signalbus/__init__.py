@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 ERROR_CODE_ATTRS = ['pgcode', 'sqlstate']
 DEADLOCK_ERROR_CODES = ['40001', '40P01']
+MODELS_TO_PROCESS_SESSION_INFO_KEY = 'flask_signalbus__models_to_process'
 
 
 def get_db_error_code(exception):
@@ -96,11 +97,11 @@ class SignalBus:
     def _transient_to_pending_handler(self, session, instance):
         model = type(instance)
         if hasattr(model, 'send_signalbus_message'):
-            models_to_process = self._get_set_of_models_to_process(session)
+            models_to_process = session.info.setdefault(MODELS_TO_PROCESS_SESSION_INFO_KEY, set())
             models_to_process.add(model)
 
     def _after_commit_handler(self, session):
-        models_to_process = self._get_set_of_models_to_process(session)
+        models_to_process = session.info.setdefault(MODELS_TO_PROCESS_SESSION_INFO_KEY, set())
         for model in models_to_process:
             try:
                 self.flush(model)
@@ -120,7 +121,3 @@ class SignalBus:
         self.signal_session.expire_all()
         self.signal_session.commit()
         return signal_count
-
-    @staticmethod
-    def _get_set_of_models_to_process(session):
-        return session.info.setdefault('flask_signalbus__models_to_process', set())
