@@ -62,7 +62,7 @@ class SignalBus:
         self.signal_session = db.create_scoped_session({'expire_on_commit': False})
         self.retry_on_deadlock = retry_on_deadlock(self.signal_session)
         event.listen(db.session, 'transient_to_pending', self._transient_to_pending_handler)
-        event.listen(db.session, 'after_commit', self._process_models)
+        event.listen(db.session, 'after_commit', self._after_commit_handler)
         if not hasattr(app, 'extensions'):
             app.extensions = {}
         signalbus_set = app.extensions.setdefault('signalbus', set())
@@ -79,7 +79,7 @@ class SignalBus:
             )
         ]
 
-    def flush_signals(self, model=None):
+    def flush(self, model=None):
         if model:
             try:
                 return self.retry_on_deadlock(self._flush_signals)(model)
@@ -90,7 +90,7 @@ class SignalBus:
         else:
             signal_count = 0
             for m in self.get_signal_models():
-                signal_count += self.flush_signals(m)
+                signal_count += self.flush(m)
             return signal_count
 
     def _transient_to_pending_handler(self, session, instance):
@@ -99,17 +99,17 @@ class SignalBus:
             models_to_process = self._get_set_of_models_to_process(session)
             models_to_process.add(model)
 
-    def _process_models(self, session):
+    def _after_commit_handler(self, session):
         models_to_process = self._get_set_of_models_to_process(session)
         for model in models_to_process:
             try:
-                self.flush_signals(model)
+                self.flush(model)
             except Exception:
-                logger.exception('Caught error while flushing %s records.', model.__name__)
+                logger.exception('Caught error while flushing %s.', model.__name__)
         models_to_process.clear()
 
     def _flush_signals(self, model):
-        logger.debug('Flushing %s records.', model.__name__)
+        logger.debug('Flushing %s.', model.__name__)
         signal_count = 0
         for record in self.signal_session.query(model).all():
             self.signal_session.delete(record)
