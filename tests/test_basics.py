@@ -6,7 +6,7 @@ def test_init_app(app, db, Signal):
     signalbus = fsb.SignalBus()
     signalbus.init_app(app, db)
     assert len(signalbus.get_signal_models()) == 1
-    signalbus.flush_signals(Signal)
+    signalbus.flush(Signal)
 
 
 def test_send_signal_success(db, signalbus, send_mock, Signal):
@@ -26,7 +26,7 @@ def test_send_signal_error(db, signalbus, send_mock, Signal):
     db.session.commit()
     assert send_mock.call_count == 1
     with pytest.raises(ValueError):
-        signalbus.flush_signals()
+        signalbus.flush()
     assert send_mock.call_count == 2
     assert Signal.query.count() == 1
 

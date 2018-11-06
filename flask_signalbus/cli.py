@@ -16,7 +16,7 @@ def flush():
     signal_count = 0
     signalbus_set = current_app.extensions['signalbus']
     for signalbus in signalbus_set:
-        signal_count += signalbus.flush_signals()
+        signal_count += signalbus.flush()
     if signal_count == 1:
         click.echo('{} signal has been successfully processed.'.format(signal_count))
     elif signal_count > 1:
