@@ -60,10 +60,10 @@ class SignalBus:
 
     def init_app(self, app, db=None):
         self.db = db or self.db
-        self.signal_session = db.create_scoped_session({'expire_on_commit': False})
+        self.signal_session = self.db.create_scoped_session({'expire_on_commit': False})
         self.retry_on_deadlock = retry_on_deadlock(self.signal_session)
-        event.listen(db.session, 'transient_to_pending', self._transient_to_pending_handler)
-        event.listen(db.session, 'after_commit', self._after_commit_handler)
+        event.listen(self.db.session, 'transient_to_pending', self._transient_to_pending_handler)
+        event.listen(self.db.session, 'after_commit', self._after_commit_handler)
         if not hasattr(app, 'extensions'):
             app.extensions = {}
         signalbus_set = app.extensions.setdefault('signalbus', set())
