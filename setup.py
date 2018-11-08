@@ -15,7 +15,7 @@ setup(
     name='Flask-SignalBus',
     version='0.1',
     url='https://github.com/epandurski/flask_signalbus',
-    license='BSD',
+    license='MIT',
     author='Evgeni Pandurski',
     author_email='epandurski@github.com',
     description='A Flask-SQLAlchemy extension for atomically sending messages (signals) over a message bus',
