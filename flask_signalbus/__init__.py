@@ -5,9 +5,7 @@ from sqlalchemy import event
 from sqlalchemy.exc import DBAPIError
 from . import cli
 
-
 logger = logging.getLogger(__name__)
-
 
 ERROR_CODE_ATTRS = ['pgcode', 'sqlstate']
 DEADLOCK_ERROR_CODES = ['40001', '40P01']
@@ -83,9 +81,9 @@ class SignalBus:
         ]
 
     def flush(self, model=None):
-        signal_models = [model] if model else self.get_signal_models()
+        models_to_flush = [model] if model else self.get_signal_models()
         try:
-            return sum(self._flush_signals_with_retry(m) for m in signal_models)
+            return sum(self._flush_signals_with_retry(m) for m in models_to_flush)
         finally:
             self.signal_session.remove()
 
