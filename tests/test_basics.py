@@ -37,3 +37,11 @@ def test_non_signal_model(db, signalbus, send_mock, NonSignal):
     db.session.flush()
     db.session.commit()
     assert NonSignal.query.count() == 1
+
+
+def test_flush_on_init_app(app, db, Signal):
+    sig = Signal(name='error', value='1')
+    db.session.add(sig)
+    db.session.commit()
+    with pytest.raises(ValueError):
+        fsb.SignalBus(app, db, flush=True)

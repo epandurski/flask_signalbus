@@ -53,12 +53,12 @@ def retry_on_deadlock(session, retries=6, min_wait=0.1, max_wait=10.0):
 
 
 class SignalBus:
-    def __init__(self, app=None, db=None):
+    def __init__(self, app=None, db=None, **kw):
         self.db = db
         if app is not None and db is not None:
-            self.init_app(app, db)
+            self.init_app(app, db, **kw)
 
-    def init_app(self, app, db=None):
+    def init_app(self, app, db=None, **kw):
         self.db = db or self.db
         self.signal_session = self.db.create_scoped_session({'expire_on_commit': False})
         self.retry_on_deadlock = retry_on_deadlock(self.signal_session)
@@ -74,6 +74,9 @@ class SignalBus:
         def shutdown_signal_session(response_or_exc):
             self.signal_session.remove()
             return response_or_exc
+
+        if kw.pop('flush', False):
+            self.flush()
 
     def get_signal_models(self):
         base = self.db.Model
