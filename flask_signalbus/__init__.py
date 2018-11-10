@@ -61,7 +61,7 @@ class SignalBus:
     def init_app(self, app, db=None, **kw):
         self.db = db or self.db
         self.signal_session = self.db.create_scoped_session({'expire_on_commit': False})
-        self.retry_on_deadlock = retry_on_deadlock(self.signal_session)
+        self._flush_signals_with_retry = retry_on_deadlock(self.signal_session)(self._flush_signals)
         event.listen(self.db.session, 'transient_to_pending', self._transient_to_pending_handler)
         event.listen(self.db.session, 'after_commit', self._after_commit_handler)
         if not hasattr(app, 'extensions'):
@@ -69,12 +69,6 @@ class SignalBus:
         signalbus_set = app.extensions.setdefault('signalbus', set())
         signalbus_set.add(self)
         app.cli.add_command(cli.signalbus)
-
-        @app.teardown_appcontext
-        def shutdown_signal_session(response_or_exc):
-            self.signal_session.remove()
-            return response_or_exc
-
         if kw.pop('flush', False):
             self.flush()
 
@@ -89,18 +83,11 @@ class SignalBus:
         ]
 
     def flush(self, model=None):
-        if model:
-            try:
-                return self.retry_on_deadlock(self._flush_signals)(model)
-            except Exception:
-                self.signal_session.rollback()
-                self.signal_session.close()
-                raise
-        else:
-            signal_count = 0
-            for m in self.get_signal_models():
-                signal_count += self.flush(m)
-            return signal_count
+        signal_models = [model] if model else self.get_signal_models()
+        try:
+            return sum(self._flush_signals_with_retry(m) for m in signal_models)
+        finally:
+            self.signal_session.remove()
 
     def _transient_to_pending_handler(self, session, instance):
         model = type(instance)
