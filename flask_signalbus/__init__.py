@@ -64,8 +64,7 @@ class SignalBus:
         event.listen(self.db.session, 'after_commit', self._after_commit_handler)
         if not hasattr(app, 'extensions'):
             app.extensions = {}
-        signalbus_set = app.extensions.setdefault('signalbus', set())
-        signalbus_set.add(self)
+        app.extensions['signalbus'] = self
         app.cli.add_command(cli.signalbus)
         if kw.pop('flush', False):
             self.flush()
