@@ -70,6 +70,11 @@ class SignalBus:
         signalbus_set.add(self)
         app.cli.add_command(cli.signalbus)
 
+        @app.teardown_appcontext
+        def shutdown_signal_session(response_or_exc):
+            self.signal_session.remove()
+            return response_or_exc
+
     def get_signal_models(self):
         base = self.db.Model
         return [
