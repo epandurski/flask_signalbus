@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 ERROR_CODE_ATTRS = ['pgcode', 'sqlstate']
 DEADLOCK_ERROR_CODES = ['40001', '40P01']
-MODELS_TO_PROCESS_SESSION_INFO_KEY = 'flask_signalbus__models_to_process'
+MODELS_TO_FLUSH_SESSION_INFO_KEY = 'flask_signalbus__models_to_flush'
 
 
 def get_db_error_code(exception):
@@ -90,25 +90,25 @@ class SignalBus:
     def _transient_to_pending_handler(self, session, instance):
         model = type(instance)
         if hasattr(model, 'send_signalbus_message'):
-            models_to_process = session.info.setdefault(MODELS_TO_PROCESS_SESSION_INFO_KEY, set())
-            models_to_process.add(model)
+            models_to_flush = session.info.setdefault(MODELS_TO_FLUSH_SESSION_INFO_KEY, set())
+            models_to_flush.add(model)
 
     def _after_commit_handler(self, session):
-        models_to_process = session.info.setdefault(MODELS_TO_PROCESS_SESSION_INFO_KEY, set())
-        for model in models_to_process:
+        models_to_flush = session.info.setdefault(MODELS_TO_FLUSH_SESSION_INFO_KEY, set())
+        for model in models_to_flush:
             try:
                 self.flush(model)
             except Exception:
                 logger.exception('Caught error while flushing %s.', model.__name__)
-        models_to_process.clear()
+        models_to_flush.clear()
 
     def _flush_signals(self, model):
         logger.debug('Flushing %s.', model.__name__)
         signal_count = 0
-        for record in self.signal_session.query(model).all():
-            self.signal_session.delete(record)
+        for signal in self.signal_session.query(model).all():
+            self.signal_session.delete(signal)
             self.signal_session.flush()
-            record.send_signalbus_message()
+            signal.send_signalbus_message()
             self.signal_session.commit()
             signal_count += 1
         self.signal_session.expire_all()
