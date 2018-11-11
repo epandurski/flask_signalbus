@@ -41,3 +41,29 @@ def flush(signal_names, exclude):
         click.echo('{} signal has been successfully processed.'.format(signal_count))
     elif signal_count > 1:
         click.echo('{} signals have been successfully processed.'.format(signal_count))
+
+
+@signalbus.command()
+@with_appcontext
+def signals():
+    """Show all signal types."""
+
+    signalbus = current_app.extensions['signalbus']
+    for signal_model in signalbus.get_signal_models():
+        click.echo(signal_model.__name__)
+
+
+@signalbus.command()
+@with_appcontext
+def pending():
+    """Show the number of pending signals by signal type."""
+
+    signalbus = current_app.extensions['signalbus']
+    total_pending = 0
+    for signal_model in signalbus.get_signal_models():
+        count = signal_model.query.count()
+        if count > 0:
+            click.echo('{} of type "{}"'.format(count, signal_model.__name__))
+        total_pending += count
+    click.echo(25 * '-')
+    click.echo('Total pending: {} '.format(total_pending))
