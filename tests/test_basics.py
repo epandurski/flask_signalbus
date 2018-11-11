@@ -28,6 +28,13 @@ def test_create_signalbus_directly(app):
     assert len(signalbus.get_signal_models()) == 0
 
 
+def test_create_two_signalbuses_directly(app):
+    db = SQLAlchemy(app)
+    SignalBus(db)
+    with pytest.raises(RuntimeError):
+        SignalBus(db)
+
+
 def test_create_signalbus_directly_no_app():
     db = SQLAlchemy()
     with pytest.raises(RuntimeError):

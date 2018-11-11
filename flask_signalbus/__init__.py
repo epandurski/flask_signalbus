@@ -108,6 +108,8 @@ class SignalBus(object):
     def _init_app(self, app):
         if not hasattr(app, 'extensions'):
             app.extensions = {}
+        if app.extensions.get('signalbus') not in [None, self]:
+            raise RuntimeError('Can not attach more than one SignalBus to one application.')
         app.extensions['signalbus'] = self
         app.cli.add_command(cli.signalbus)
 
