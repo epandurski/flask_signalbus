@@ -127,7 +127,7 @@ class SignalBus(object):
                     self.flush(model)
                 except Exception:
                     logger.exception('Caught error while flushing %s.', model.__name__)
-        else:
+        elif models_to_flush:
             logger.debug('Flushing skipped, "autoflush" is False.')
         models_to_flush.clear()
 
