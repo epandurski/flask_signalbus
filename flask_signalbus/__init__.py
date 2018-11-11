@@ -50,24 +50,43 @@ def retry_on_deadlock(session, retries=6, min_wait=0.1, max_wait=10.0):
     return decorator
 
 
-class SignalBus:
-    def __init__(self, app=None, db=None, **kw):
-        self.db = db
-        if app is not None and db is not None:
-            self.init_app(app, db, **kw)
+class SignalBusMixin(object):
+    def init_app(self, app, *args, **kwargs):
+        super(SignalBusMixin, self).init_app(app, *args, **kwargs)
+        self.signalbus._init_app(app)
 
-    def init_app(self, app, db=None, **kw):
-        self.db = db or self.db
+    @property
+    def signalbus(self):
+        try:
+            signalbus = self.__signalbus
+        except AttributeError:
+            signalbus = self.__signalbus = SignalBus(self, init_app=False)
+        return signalbus
+
+
+class SignalBus(object):
+    def __init__(self, db, init_app=True):
+        self.db = db
         self.signal_session = self.db.create_scoped_session({'expire_on_commit': False})
+        self._autoflush = True
         self._flush_signals_with_retry = retry_on_deadlock(self.signal_session)(self._flush_signals)
         event.listen(self.db.session, 'transient_to_pending', self._transient_to_pending_handler)
         event.listen(self.db.session, 'after_commit', self._after_commit_handler)
-        if not hasattr(app, 'extensions'):
-            app.extensions = {}
-        app.extensions['signalbus'] = self
-        app.cli.add_command(cli.signalbus)
-        if kw.pop('flush', False):
-            self.flush()
+        if init_app:
+            if db.app is None:
+                raise RuntimeError(
+                    'No application found. The SQLAlchemy instance passed to the'
+                    ' SignalBus constructor should be constructed with an application.'
+                )
+            self._init_app(db.app)
+
+    @property
+    def autoflush(self):
+        return self._autoflush
+
+    @autoflush.setter
+    def autoflush(self, value):
+        self._autoflush = bool(value)
 
     def get_signal_models(self):
         base = self.db.Model
@@ -86,6 +105,12 @@ class SignalBus:
         finally:
             self.signal_session.remove()
 
+    def _init_app(self, app):
+        if not hasattr(app, 'extensions'):
+            app.extensions = {}
+        app.extensions['signalbus'] = self
+        app.cli.add_command(cli.signalbus)
+
     def _transient_to_pending_handler(self, session, instance):
         model = type(instance)
         if hasattr(model, 'send_signalbus_message'):
@@ -94,14 +119,21 @@ class SignalBus:
 
     def _after_commit_handler(self, session):
         models_to_flush = session.info.setdefault(MODELS_TO_FLUSH_SESSION_INFO_KEY, set())
-        for model in models_to_flush:
-            try:
-                self.flush(model)
-            except Exception:
-                logger.exception('Caught error while flushing %s.', model.__name__)
+        if self.autoflush:
+            for model in models_to_flush:
+                try:
+                    self.flush(model)
+                except Exception:
+                    logger.exception('Caught error while flushing %s.', model.__name__)
+        else:
+            logger.debug('Flushing skipped, "autoflush" is False.')
         models_to_flush.clear()
 
     def _flush_signals(self, model):
+        if not hasattr(model, 'send_signalbus_message'):
+            raise RuntimeError(
+                '{} can not be flushed because it does not have a "send_signalbus_message" method.'
+            )
         logger.debug('Flushing %s.', model.__name__)
         signal_count = 0
         for signal in self.signal_session.query(model).all():

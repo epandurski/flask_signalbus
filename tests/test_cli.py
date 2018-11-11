@@ -4,7 +4,7 @@ def test_flush_empty(app, signalbus):
     assert not result.output
 
 
-def test_flush_peinding(app, signalbus_with_pending_signal):
+def test_flush_pending(app, signalbus_with_pending_signal):
     runner = app.test_cli_runner()
     result = runner.invoke(args=['signalbus', 'flush'])
     assert '1' in result.output
