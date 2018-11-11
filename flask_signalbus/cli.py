@@ -59,11 +59,17 @@ def pending():
     """Show the number of pending signals by signal type."""
 
     signalbus = current_app.extensions['signalbus']
+    pending = []
     total_pending = 0
     for signal_model in signalbus.get_signal_models():
         count = signal_model.query.count()
         if count > 0:
-            click.echo('{} of type "{}"'.format(count, signal_model.__name__))
+            pending.append((count, signal_model.__name__))
         total_pending += count
+    if pending:
+        pending.sort()
+        max_chars = len(str(pending[-1][0]))
+        for n, signal_name in pending:
+            click.echo('{} of type "{}"'.format(str(n).rjust(max_chars), signal_name))
     click.echo(25 * '-')
     click.echo('Total pending: {} '.format(total_pending))
