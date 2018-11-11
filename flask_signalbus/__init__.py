@@ -75,8 +75,8 @@ class SignalBus(object):
         if init_app:
             if db.app is None:
                 raise RuntimeError(
-                    'No application found. The SQLAlchemy instance passed to the'
-                    ' SignalBus constructor should be constructed with an application.'
+                    'No application found. The SQLAlchemy instance passed to'
+                    ' SignalBus should be constructed with an application.'
                 )
             self._init_app(db.app)
 
@@ -132,7 +132,8 @@ class SignalBus(object):
     def _flush_signals(self, model):
         if not hasattr(model, 'send_signalbus_message'):
             raise RuntimeError(
-                '{} can not be flushed because it does not have a "send_signalbus_message" method.'
+                '{} can not be flushed because it does not have a'
+                ' "send_signalbus_message" method.'
             )
         logger.debug('Flushing %s.', model.__name__)
         signal_count = 0
