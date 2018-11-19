@@ -5,8 +5,6 @@ from sqlalchemy import event
 from sqlalchemy.exc import DBAPIError
 from . import cli
 
-logger = logging.getLogger(__name__)
-
 ERROR_CODE_ATTRS = ['pgcode', 'sqlstate']
 DEADLOCK_ERROR_CODES = ['40001', '40P01']
 MODELS_TO_FLUSH_SESSION_INFO_KEY = 'flask_signalbus__models_to_flush'
@@ -68,6 +66,7 @@ class SignalBus(object):
     def __init__(self, db, init_app=True):
         self.db = db
         self.signal_session = self.db.create_scoped_session({'expire_on_commit': False})
+        self.logger = logging.getLogger(__name__)
         self._autoflush = True
         self._flush_signals_with_retry = retry_on_deadlock(self.signal_session)(self._flush_signals)
         event.listen(self.db.session, 'transient_to_pending', self._transient_to_pending_handler)
@@ -126,9 +125,9 @@ class SignalBus(object):
                 try:
                     self.flush(model)
                 except Exception:
-                    logger.exception('Caught error while flushing %s.', model.__name__)
+                    self.logger.exception('Caught error while flushing %s.', model.__name__)
         elif models_to_flush:
-            logger.debug('Flushing skipped, "autoflush" is False.')
+            self.logger.debug('Flushing skipped, "autoflush" is False.')
         models_to_flush.clear()
 
     def _flush_signals(self, model):
@@ -137,7 +136,7 @@ class SignalBus(object):
                 '{} can not be flushed because it does not have a'
                 ' "send_signalbus_message" method.'
             )
-        logger.debug('Flushing %s.', model.__name__)
+        self.logger.debug('Flushing %s.', model.__name__)
         burst_count = getattr(model, 'signalbus_burst_count', 1)
         signal_count = 0
         for signal in self.signal_session.query(model).all():
