@@ -49,12 +49,33 @@ def retry_on_deadlock(session, retries=6, min_wait=0.1, max_wait=10.0):
 
 
 class SignalBusMixin(object):
+    """A **mixin class** that can be used to extend the
+    :class:`~flask_sqlalchemy.SQLAlchemy` class, provided by
+    `Flask-SQLAlchemy`, to handle signals.
+
+    For example::
+
+        from flask import Flask
+        from flask_sqlalchemy import SQLAlchemy
+        from flask_signalbus import SignalBusMixin
+
+        class CustomSQLAlchemy(SignalBusMixin, SQLAlchemy):
+            pass
+
+        app = Flask(__name__)
+        db = CustomSQLAlchemy(app)
+        db.signalbus.flush()
+
+    """
+
     def init_app(self, app, *args, **kwargs):
         super(SignalBusMixin, self).init_app(app, *args, **kwargs)
         self.signalbus._init_app(app)
 
     @property
     def signalbus(self):
+        """The associated :class:`SignalBus` object."""
+
         try:
             signalbus = self.__signalbus
         except AttributeError:
@@ -63,6 +84,26 @@ class SignalBusMixin(object):
 
 
 class SignalBus(object):
+    """Instances of this class automatically send signal messages that
+    have been recorded in the SQL database, over a message
+    bus. Normally, the sending of the recorded messages (if there are
+    any) is done after each transaction commit, but it also can be
+    triggered explicitly by a command.
+
+    :param db: The :class:`~flask_sqlalchemy.SQLAlchemy` instance
+
+    For example::
+
+        from flask_sqlalchemy import SQLAlchemy
+        from flask_signalbus import SignalBus
+
+        app = Flask(__name__)
+        db = SQLAlchemy(app)
+        signalbus = SignalBus(db)
+        signalbus.flush()
+
+    """
+
     def __init__(self, db, init_app=True):
         self.db = db
         self.signal_session = self.db.create_scoped_session({'expire_on_commit': False})
@@ -81,6 +122,13 @@ class SignalBus(object):
 
     @property
     def autoflush(self):
+        """Setting this property to ``False`` instructs the ``SignalBus``
+        instance to not automatically flush pending signals after each
+        transaction commit. Setting it back to ``True`` restores the
+        default behavior.
+
+        """
+
         return self._autoflush
 
     @autoflush.setter
@@ -88,6 +136,12 @@ class SignalBus(object):
         self._autoflush = bool(value)
 
     def get_signal_models(self):
+        """Return all signal types in a list.
+
+        :rtype: list(*signal model*)
+
+        """
+
         base = self.db.Model
         return [
             cls for cls in base._decl_class_registry.values() if (
@@ -98,6 +152,14 @@ class SignalBus(object):
         ]
 
     def flush(self, model=None):
+        """Send all pending signals over the message bus.
+
+        :param model: If passed, flushes only signals of the specified type.
+        :type model: *signal model* or None
+        :return: The total number of signals that have been sent
+
+        """
+
         models_to_flush = [model] if model else self.get_signal_models()
         try:
             return sum(self._flush_signals_with_retry(m) for m in models_to_flush)
