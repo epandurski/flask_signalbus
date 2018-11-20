@@ -18,9 +18,9 @@ The processing of each message involves three steps:
   3. Message's corresponding table row is deleted.
 
 Normally, the sending of the recorded messages (steps 2 and 3) is done
-automatically after each transaction commit, but it can also be
-triggered explicitly with a `method call <SignalBus.flush>`, or
-through the Flask `command-line-interface`.
+automatically after each transaction commit, but when needed, it can
+also be triggered explicitly with a `method call <SignalBus.flush>`,
+or through the Flask `command-line-interface`.
 
 
 Installation
@@ -65,41 +65,45 @@ this will happen automatically, so that the only thing we need to do
 as a part of the database transaction, is to add our message to
 ``db.session``::
 
-  # Our transaction begins here.
+  # =========== Our transaction begins here. ===========
 
-  # Insert/delete/update some database rows here!
+  # We may insert/delete/update some database rows here!!!
 
-  # Add our signal to the database session:
-  msg = MySignal(message_text='Message in a Bottle')
-  db.session.add(msg)
+  # Here we add our message to the database session:
+  db.session.add(MySignal(message_text='Message in a Bottle'))
 
-  # Insert/delete/update some more database rows here!
+  # We may insert/delete/update some database rows here too!!!
 
   db.commit()
+  
+  # Our transaction is committed. The message has been sent
+  # over the message bus. The corresponding row in the
+  # database table has been deleted. Auto-magically!
 
-Note that as part of one database transaction we can add many
-different messages (signals) of many different types, and all of them
-will be processed and sent automatically.
+Within one database transaction we can add many messages (signals) of
+many different types. As long as they have a
+``send_signalbus_message`` method defined, they all will be processed
+and sent automatically.
 
 
 Pending Signals
 ```````````````
 
-If our program is terminated right after a message has been recorded
-in the SQL database, but before it has been sent over the message bus,
-the row representing the message will remain in the database. We call
-this a *pending signal*.
+If, for any reason, our program is terminated right after a message
+has been recorded in the SQL database, but before it has been sent
+over the message bus, the row representing the message will remain in
+the database. We call this a *pending signal*.
 
-In order to guarantee that all pending signals are processed in time,
-even when the application that generates them does not run, it is
+In order to guarantee that all pending signals are processed and sent
+in time, even when the application that generates them is down, it is
 recommended that pending signals are flushed periodically,
-independently from the application that generates them. (You can do
-this as part of a ``cron`` job, for example. See
+independently from the application that generates them. This can be
+done as part of a ``cron`` job, for example. (See
 `command-line-interface`.)
 
 
-Using Application Factory Pattern
-`````````````````````````````````
+Application Factory Pattern
+```````````````````````````
 
 If you want to use the application factory pattern with
 Flask-SignalBus, you should subclass the
@@ -132,7 +136,7 @@ Transaction Isolation Level
 
 It is recommended that you use at least ``REPEATABLE_READ``
 transaction isolation level with Flask-SignalBus. ``READ COMMITTED``
-should be OK too, but in this case you might, more frequently than
+should be OK too, but in that case you might, more frequently than
 necessary, see a single message sent more than once over the message
 bus.
 
