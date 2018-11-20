@@ -7,6 +7,9 @@ Quickstart
 Installation
 ````````````
 
+Install Flask-SignalBus with `pip`::
+
+    pip install Flask-SignalBus
 
 Examples
 ````````

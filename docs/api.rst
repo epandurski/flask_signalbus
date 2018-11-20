@@ -4,8 +4,10 @@ API Reference
 .. module:: flask_signalbus
 
 
-Signal Models
-`````````````
+.. _signal-model:
+
+Signal Model
+````````````
 
 A *signal model* is an otherwise normal database model class (a
 subclass of ``db.Model``), which however has a

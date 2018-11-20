@@ -6,6 +6,9 @@
 Welcome to Flask-SignalBus's documentation!
 ===========================================
 
+.. module:: flask_signalbus
+
+
 Contents:
 
 .. toctree::

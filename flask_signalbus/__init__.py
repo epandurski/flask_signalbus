@@ -50,8 +50,7 @@ def retry_on_deadlock(session, retries=6, min_wait=0.1, max_wait=10.0):
 
 class SignalBusMixin(object):
     """A **mixin class** that can be used to extend the
-    :class:`~flask_sqlalchemy.SQLAlchemy` class, provided by
-    `Flask-SQLAlchemy`, to handle signals.
+    `flask_sqlalchemy.SQLAlchemy` class to handle signals.
 
     For example::
 
@@ -74,7 +73,7 @@ class SignalBusMixin(object):
 
     @property
     def signalbus(self):
-        """The associated :class:`SignalBus` object."""
+        """The associated `SignalBus` object."""
 
         try:
             signalbus = self.__signalbus
@@ -90,7 +89,7 @@ class SignalBus(object):
     any) is done after each transaction commit, but it also can be
     triggered explicitly by a command.
 
-    :param db: The :class:`~flask_sqlalchemy.SQLAlchemy` instance
+    :param db: The `flask_sqlalchemy.SQLAlchemy` instance
 
     For example::
 
@@ -122,9 +121,9 @@ class SignalBus(object):
 
     @property
     def autoflush(self):
-        """Setting this property to ``False`` instructs the ``SignalBus``
-        instance to not automatically flush pending signals after each
-        transaction commit. Setting it back to ``True`` restores the
+        """Setting this property to `False` instructs the `SignalBus` instance
+        to not automatically flush pending signals after each
+        transaction commit. Setting it back to `True` restores the
         default behavior.
 
         """
@@ -138,7 +137,7 @@ class SignalBus(object):
     def get_signal_models(self):
         """Return all signal types in a list.
 
-        :rtype: list(*signal model*)
+        :rtype: list(`signal-model`)
 
         """
 
@@ -155,7 +154,7 @@ class SignalBus(object):
         """Send all pending signals over the message bus.
 
         :param model: If passed, flushes only signals of the specified type.
-        :type model: *signal model* or None
+        :type model: `signal-model` or `None`
         :return: The total number of signals that have been sent
 
         """
