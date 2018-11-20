@@ -7,7 +7,7 @@ Welcome to Flask-SignalBus's documentation!
 ===========================================
 
 **Flask-SignalBus** adds to Flask-SQLAlchemy the capability to
-atomically send messages (signals) over a message bus.
+*atomically* send messages (signals) over a message bus.
 
 The processing of each message involves three steps:
 
@@ -55,18 +55,21 @@ example::
           # the message over the message bus!
           pass
 
-Here, ``MySignal`` represent the particular type of message that we
-will be sending over the message bus. Now each time we add a new
-object of this type to ``db.session``, Flask-SignalBus will take note
-of that, and when the database transaction is committed, will call the
-``MySignal.send_signalbus_message`` method, and delete the
-corresponding row in the database table. All this will happen
-automatically, so we only need to add our message to the database
-session as part the database transaction::
+Here, ``MySignal`` represent one particular type of message that we
+will be sending over the message bus. Now, each time we add a new
+object of type ``MySignal`` to ``db.session``, Flask-SignalBus will
+take note of that, and finally, when the database transaction is
+committed, it will call the ``MySignal.send_signalbus_message``
+method, and delete the corresponding row from the database table. All
+this will happen automatically, so that the only thing we need to do
+as a part of the database transaction, is to add our message to
+``db.session``::
+
+  # Our transaction begins here.
 
   # Insert/delete/update some database rows here!
 
-  # Add our message to the database session:
+  # Add our signal to the database session:
   msg = MySignal(message_text='Message in a Bottle')
   db.session.add(msg)
 
@@ -74,47 +77,64 @@ session as part the database transaction::
 
   db.commit()
 
+Note that as part of one database transaction we can add many
+different messages (signals) of many different types, and all of them
+will be processed and sent automatically.
+
 
 Pending Signals
 ```````````````
 
-If our program is terminated after a message has been recorded in the
-SQL database, but before it has been sent over the message bus, the
-row representing the message will remain in the database. We call this
-a *pending signal*.
+If our program is terminated right after a message has been recorded
+in the SQL database, but before it has been sent over the message bus,
+the row representing the message will remain in the database. We call
+this a *pending signal*.
 
 In order to guarantee that all pending signals are processed in time,
-even when the application that generates them does not work, it is
-recommended that pending signals are flushed periodically, separately
-from the application that generates them. (You can do this as part of
-a ``cron`` job, for example. See `command-line-interface`.)
+even when the application that generates them does not run, it is
+recommended that pending signals are flushed periodically,
+independently from the application that generates them. (You can do
+this as part of a ``cron`` job, for example. See
+`command-line-interface`.)
 
 
 Using Application Factory Pattern
 `````````````````````````````````
 
-To use Falsk-SignalBus with the application factory pattern, you
-should subclass the `flask_sqlalchemy.SQLAlchemy` class, adding the
-`SignalBusMixin` mixin. For example::
+If you want to use the application factory pattern with
+Flask-SignalBus, you should subclass the
+:class:`~flask_sqlalchemy.SQLAlchemy` class, adding the
+`SignalBusMixin` mixin to it. For example::
 
-  from flask import Flask
   from flask_sqlalchemy import SQLAlchemy
   from flask_signalbus import SignalBusMixin
 
   class CustomSQLAlchemy(SignalBusMixin, SQLAlchemy):
       pass
 
-  app = Flask(__name__)
-  db = CustomSQLAlchemy(app)
+  db = CustomSQLAlchemy()
 
 Note that `SignalBusMixin` should always come before
-`flask_sqlalchemy.SQLAlchemy`.
+:class:`~flask_sqlalchemy.SQLAlchemy`.
+
+
+Message Ordering, Message Duplication
+`````````````````````````````````````
+
+Flask-SignalBus does not give guarantees about the order in which the
+messages will be sent over the message bus. Also, sometimes a single
+message can be sent more than once. Keep this in mind while designing
+your system.
 
 
 Transaction Isolation Level
 ```````````````````````````
 
-TODO
+It is recommended that you use at least ``REPEATABLE_READ``
+transaction isolation level with Flask-SignalBus. ``READ COMMITTED``
+should be OK too, but in this case you might, more frequently than
+necessary, see a single message sent more than once over the message
+bus.
 
 
 Contents:
