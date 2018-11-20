@@ -1,11 +1,11 @@
+.. _command-line-interface:
+
 Command Line Interface
 ======================
 
-.. module:: flask_signalbus
-
-
-Flask-SignalBus will register a group of Flask CLI commands, starging
-with the prefix ``signalbus``. To see all available commands, use::
+Flask-SignalBus will register a group of Flask command-line interface
+commands, starging with the prefix ``signalbus``. To see all available
+commands, use::
 
     $ flask signalbus --help
 

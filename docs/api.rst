@@ -20,8 +20,8 @@ subclass of ``db.Model``), which however has a
   db = SQLAlchemy(app)
 
   class MySignal(db.Model):
-      id = db.Column(db.BigInteger, primary_key=True, autoincrement=True)
-      message = db.Column(db.Text, nullable=False)
+      id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+      message_text = db.Column(db.Text, nullable=False)
       signalbus_burst_count = 10
 
       def send_signalbus_message(self):
