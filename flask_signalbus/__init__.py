@@ -1,3 +1,8 @@
+"""
+Adds to Flask-SQLAlchemy the capability to atomically send
+messages (signals) over a message bus.
+"""
+
 import time
 import logging
 from functools import wraps
