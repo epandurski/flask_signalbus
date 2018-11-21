@@ -3,9 +3,8 @@
 Command Line Interface
 ======================
 
-Flask-SignalBus will register a group of Flask command-line interface
-commands, starging with the prefix ``signalbus``. To see all available
-commands, use::
+Flask-SignalBus will register a group of Flask CLI commands, starting
+with the prefix ``signalbus``. To see all available commands, use::
 
     $ flask signalbus --help
 

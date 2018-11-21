@@ -98,8 +98,7 @@ In order to guarantee that all pending signals are processed and sent
 in time, even when the application that generates them is down, it is
 recommended that pending signals are flushed periodically,
 independently from the application that generates them. This can be
-done as part of a ``cron`` job, for example. (See
-`command-line-interface`.)
+done in a ``cron`` job for example. (See `command-line-interface`.)
 
 
 Application Factory Pattern
