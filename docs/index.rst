@@ -35,8 +35,7 @@ Usage
 `````
 
 Each type of message (signal) that we plan to send over the message
-bus should have a corresponding database model class defined. For
-example::
+bus should have its own database model class defined. For example::
 
   from flask import Flask
   from flask_sqlalchemy import SQLAlchemy
@@ -53,7 +52,6 @@ example::
       def send_signalbus_message(self):
           # Write some code here, that sends
           # the message over the message bus!
-          pass
 
 Here, ``MySignal`` represent one particular type of message that we
 will be sending over the message bus. Now, each time we add a new
@@ -104,7 +102,7 @@ done in a ``cron`` job for example. (See `command-line-interface`.)
 Application Factory Pattern
 ```````````````````````````
 
-If you want to use the application factory pattern with
+If you want to use the Flask application factory pattern with
 Flask-SignalBus, you should subclass the
 :class:`~flask_sqlalchemy.SQLAlchemy` class, adding the
 `SignalBusMixin` mixin to it. For example::
@@ -126,7 +124,7 @@ Message Ordering, Message Duplication
 
 Flask-SignalBus does not give guarantees about the order in which the
 messages will be sent over the message bus. Also, sometimes a single
-message can be sent more than once. Keep this in mind while designing
+message can be sent more than once. Keep that in mind while designing
 your system.
 
 
