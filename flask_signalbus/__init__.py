@@ -5,6 +5,7 @@ messages (signals) over a message bus.
 
 import time
 import logging
+import random
 from functools import wraps
 from sqlalchemy import event, inspect
 from sqlalchemy.exc import DBAPIError
@@ -220,10 +221,14 @@ class SignalBus(object):
                 ' "send_signalbus_message" method.'
             )
         self.logger.debug('Flushing %s.', model.__name__)
-        burst_count = getattr(model, 'signalbus_burst_count', 1)
+        burst_count = int(getattr(model, 'signalbus_burst_count', 1))
         signal_count = 0
         signals = self.signal_session.query(model).all()
         self.signal_session.commit()
+        if burst_count > 1:
+            # Shuffle signals randomly to avoid systematic deadlocks.
+            signals = list(signals)
+            random.shuffle(signals)
         for signal in signals:
             self.signal_session.delete(signal)
             signal.send_signalbus_message()
