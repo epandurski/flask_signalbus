@@ -118,7 +118,8 @@ class SignalBus(object):
         self.signal_session = self.db.create_scoped_session({'expire_on_commit': False})
         self.logger = logging.getLogger(__name__)
         self._autoflush = True
-        self._flush_signals_with_retry = retry_on_deadlock(self.signal_session)(self._flush_signals)
+        retry = retry_on_deadlock(self.signal_session, retries=10, max_wait=1.0)
+        self._flush_signals_with_retry = retry(self._flush_signals)
         event.listen(self.db.session, 'transient_to_pending', self._transient_to_pending_handler)
         event.listen(self.db.session, 'after_commit', self._after_commit_handler)
         if init_app:
