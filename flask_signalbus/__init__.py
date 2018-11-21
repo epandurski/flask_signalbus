@@ -221,9 +221,10 @@ class SignalBus(object):
         self.logger.debug('Flushing %s.', model.__name__)
         burst_count = getattr(model, 'signalbus_burst_count', 1)
         signal_count = 0
-        for signal in self.signal_session.query(model).all():
+        signals = self.signal_session.query(model).all()
+        self.signal_session.commit()
+        for signal in signals:
             self.signal_session.delete(signal)
-            self.signal_session.flush()
             signal.send_signalbus_message()
             signal_count += 1
             if signal_count % burst_count == 0:

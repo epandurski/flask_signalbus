@@ -131,16 +131,6 @@ message can be sent more than once. Keep this in mind while designing
 your system.
 
 
-Transaction Isolation Level
-```````````````````````````
-
-It is recommended that you use at least ``REPEATABLE_READ``
-transaction isolation level with Flask-SignalBus. ``READ COMMITTED``
-should be OK too, but in that case you might, more frequently than
-necessary, see a single message sent more than once over the message
-bus.
-
-
 Contents:
 
 .. toctree::
