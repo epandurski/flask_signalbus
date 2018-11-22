@@ -5,11 +5,9 @@ messages (signals) over a message bus.
 
 import time
 import logging
-import random
 from functools import wraps
 from sqlalchemy import event, inspect
 from sqlalchemy.exc import DBAPIError
-from sqlalchemy.sql.expression import and_
 from . import cli
 
 ERROR_CODE_ATTRS = ['pgcode', 'sqlstate']
@@ -173,7 +171,23 @@ class SignalBus(object):
 
         models_to_flush = [model] if model else self.get_signal_models()
         try:
-            return sum(self._flush_signals_with_retry(m) for m in models_to_flush)
+            pks_to_flush = {}
+            for model in models_to_flush:
+                if not hasattr(model, 'send_signalbus_message'):
+                    raise RuntimeError(
+                        '{} can not be flushed because it does not have a'
+                        ' "send_signalbus_message" method.'
+                    )
+                m = inspect(model)
+                pk_attrs = [m.get_property_by_column(c).class_attribute for c in m.primary_key]
+                pk_values_list = self.signal_session.query(*pk_attrs).all()
+                pks_to_flush[model] = set(pk_values_list)
+            self.signal_session.rollback()
+            time.sleep(2.0)
+            return sum(
+                self._flush_signals_with_retry(model, pks_to_flush[model])
+                for model in models_to_flush
+            )
         finally:
             self.signal_session.remove()
 
@@ -194,15 +208,12 @@ class SignalBus(object):
     def _after_commit_handler(self, session):
         signals_to_flush = session.info.setdefault(SIGNALS_TO_FLUSH_SESSION_INFO_KEY, set())
         if self.autoflush:
+            signals_to_flush = {self.signal_session.merge(signal, load=False) for signal in signals_to_flush}
             for signal in signals_to_flush:
                 model = type(signal)
-                m = inspect(model)
-                pk_attrs = [m.get_property_by_column(c).class_attribute for c in m.primary_key]
-                pk_values = m.primary_key_from_instance(signal)
-                clause = and_(*[attr == value for attr, value in zip(pk_attrs, pk_values)])
                 try:
-                    self.signal_session.query(model).filter(clause).delete()
                     signal.send_signalbus_message()
+                    self.signal_session.delete(signal)
                 except Exception as e:
                     if not is_serializaion_error(e):
                         self.logger.exception('Caught error while flushing %s.', model.__name__)
@@ -214,27 +225,21 @@ class SignalBus(object):
             self.logger.debug('Flushing skipped, "autoflush" is False.')
         signals_to_flush.clear()
 
-    def _flush_signals(self, model):
-        if not hasattr(model, 'send_signalbus_message'):
-            raise RuntimeError(
-                '{} can not be flushed because it does not have a'
-                ' "send_signalbus_message" method.'
-            )
+    def _flush_signals(self, model, pk_values_set):
         self.logger.debug('Flushing %s.', model.__name__)
-        burst_count = int(getattr(model, 'signalbus_burst_count', 1))
-        signal_count = 0
         signals = self.signal_session.query(model).all()
         self.signal_session.commit()
-        if burst_count > 1:
-            # Shuffle signals randomly to avoid systematic deadlocks.
-            signals = list(signals)
-            random.shuffle(signals)
+        burst_count = int(getattr(model, 'signalbus_burst_count', 1))
+        signal_count = 0
+        m = inspect(model)
         for signal in signals:
-            self.signal_session.delete(signal)
-            signal.send_signalbus_message()
-            signal_count += 1
-            if signal_count % burst_count == 0:
-                self.signal_session.commit()
+            pk_values = m.primary_key_from_instance(signal)
+            if pk_values in pk_values_set:
+                signal.send_signalbus_message()
+                self.signal_session.delete(signal)
+                signal_count += 1
+                if signal_count % burst_count == 0:
+                    self.signal_session.commit()
         self.signal_session.commit()
         self.signal_session.expire_all()
         return signal_count
