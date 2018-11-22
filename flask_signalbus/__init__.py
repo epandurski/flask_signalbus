@@ -53,10 +53,6 @@ def retry_on_deadlock(session, retries=6, min_wait=0.1, max_wait=10.0):
     return decorator
 
 
-def is_serializaion_error(e):
-    return isinstance(e, DBAPIError) and get_db_error_code(e.orig) in DEADLOCK_ERROR_CODES
-
-
 class SignalBusMixin(object):
     """A **mixin class** that can be used to extend the
     `flask_sqlalchemy.SQLAlchemy` class to handle signals.
@@ -120,7 +116,7 @@ class SignalBus(object):
         retry = retry_on_deadlock(self.signal_session, retries=10, max_wait=1.0)
         self._flush_signals_with_retry = retry(self._flush_signals)
         event.listen(self.db.session, 'transient_to_pending', self._transient_to_pending_handler)
-        event.listen(self.db.session, 'after_commit', self._after_commit_handler)
+        event.listen(self.db.session, 'after_commit', self._safe_after_commit_handler)
         if init_app:
             if db.app is None:
                 raise RuntimeError(
@@ -183,7 +179,7 @@ class SignalBus(object):
                 pk_values_list = self.signal_session.query(*pk_attrs).all()
                 pks_to_flush[model] = set(pk_values_list)
             self.signal_session.rollback()
-            time.sleep(2.0)
+            time.sleep(3.0)
             return sum(
                 self._flush_signals_with_retry(model, pks_to_flush[model])
                 for model in models_to_flush
@@ -202,31 +198,34 @@ class SignalBus(object):
     def _transient_to_pending_handler(self, session, instance):
         model = type(instance)
         if hasattr(model, 'send_signalbus_message'):
-            signals = session.info.setdefault(SIGNALS_TO_FLUSH_SESSION_INFO_KEY, set())
-            signals.add(instance)
+            signals_to_flush = session.info.setdefault(SIGNALS_TO_FLUSH_SESSION_INFO_KEY, set())
+            signals_to_flush.add(instance)
 
     def _after_commit_handler(self, session):
-        signals = session.info.setdefault(SIGNALS_TO_FLUSH_SESSION_INFO_KEY, set())
-        if self.autoflush:
-            signals = {self.signal_session.merge(signal, load=False) for signal in signals}
+        signals_to_flush = session.info.pop(SIGNALS_TO_FLUSH_SESSION_INFO_KEY, set())
+        if self.autoflush and signals_to_flush:
+            signals = [self.signal_session.merge(s, load=False) for s in signals_to_flush]
             for signal in signals:
-                model = type(signal)
                 try:
                     signal.send_signalbus_message()
-                    self.signal_session.delete(signal)
-                except Exception as e:
-                    if not is_serializaion_error(e):
-                        self.logger.exception('Caught error while flushing %s.', model.__name__)
+                except:
+                    self.logger.exception('Caught error while sending %s.', signal)
                     self.signal_session.rollback()
-                    break
+                    return
+                self.signal_session.delete(signal)
             self.signal_session.commit()
             self.signal_session.expire_all()
-        elif signals:
-            self.logger.debug('Flushing skipped, "autoflush" is False.')
-        signals.clear()
+
+    def _safe_after_commit_handler(self, session):
+        try:
+            return self._after_commit_handler(session)
+        except DBAPIError as e:
+            if get_db_error_code(e.orig) not in DEADLOCK_ERROR_CODES:
+                self.logger.exception('Caught database error during autoflush.')
+            self.signal_session.rollback()
 
     def _flush_signals(self, model, pk_values_set):
-        self.logger.debug('Flushing %s.', model.__name__)
+        self.logger.info('Flushing %s.', model.__name__)
         signals = self.signal_session.query(model).all()
         self.signal_session.commit()
         burst_count = int(getattr(model, 'signalbus_burst_count', 1))
