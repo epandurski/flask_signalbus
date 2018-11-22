@@ -28,15 +28,13 @@ def flush(signal_names, exclude):
         click.echo('Warning: Specified both SIGNAL_NAMES and exclude option.')
     if signal_names:
         wrong_signal_names = signal_names - {m.__name__ for m in models_to_flush}
-        models_to_flush = [m for m in models_to_flush if type(m).__name__ in signal_names]
+        models_to_flush = [m for m in models_to_flush if m.__name__ in signal_names]
     else:
         wrong_signal_names = exclude - {m.__name__ for m in models_to_flush}
     for name in wrong_signal_names:
         click.echo('Warning: A signal with name "{}" does not exist.'.format(name))
-    models_to_flush = [m for m in models_to_flush if type(m).__name__ not in exclude]
-    signal_count = 0
-    for model in models_to_flush:
-        signal_count += signalbus.flush()
+    models_to_flush = [m for m in models_to_flush if m.__name__ not in exclude]
+    signal_count = signalbus.flush(models_to_flush)
     if signal_count == 1:
         click.echo('{} signal has been successfully processed.'.format(signal_count))
     elif signal_count > 1:

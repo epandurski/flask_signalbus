@@ -156,16 +156,16 @@ class SignalBus(object):
             )
         ]
 
-    def flush(self, model=None):
+    def flush(self, models=None):
         """Send all pending signals over the message bus.
 
-        :param model: If passed, flushes only signals of the specified type.
-        :type model: `signal-model` or `None`
+        :param models: If passed, flushes only signals of the specified types.
+        :type models: list(`signal-model`) or `None`
         :return: The total number of signals that have been sent
 
         """
 
-        models_to_flush = [model] if model else self.get_signal_models()
+        models_to_flush = self.get_signal_models() if models is None else models
         try:
             pks_to_flush = {}
             for model in models_to_flush:

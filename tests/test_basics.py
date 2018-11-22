@@ -43,13 +43,13 @@ def test_create_signalbus_directly_no_app():
 
 def test_flush_signal_model(app, signalbus, Signal):
     assert len(signalbus.get_signal_models()) == 1
-    signalbus.flush(Signal)
+    signalbus.flush([Signal])
 
 
 def test_flush_nonsignal_model(app, signalbus, NonSignal):
     assert len(signalbus.get_signal_models()) == 0
     with pytest.raises(RuntimeError):
-        signalbus.flush(NonSignal)
+        signalbus.flush([NonSignal])
 
 
 def test_flush_all_signal_models(app, signalbus, Signal, NonSignal):
