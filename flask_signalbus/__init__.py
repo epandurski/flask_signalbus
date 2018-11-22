@@ -202,14 +202,14 @@ class SignalBus(object):
     def _transient_to_pending_handler(self, session, instance):
         model = type(instance)
         if hasattr(model, 'send_signalbus_message'):
-            signals_to_flush = session.info.setdefault(SIGNALS_TO_FLUSH_SESSION_INFO_KEY, set())
-            signals_to_flush.add(instance)
+            signals = session.info.setdefault(SIGNALS_TO_FLUSH_SESSION_INFO_KEY, set())
+            signals.add(instance)
 
     def _after_commit_handler(self, session):
-        signals_to_flush = session.info.setdefault(SIGNALS_TO_FLUSH_SESSION_INFO_KEY, set())
+        signals = session.info.setdefault(SIGNALS_TO_FLUSH_SESSION_INFO_KEY, set())
         if self.autoflush:
-            signals_to_flush = {self.signal_session.merge(signal, load=False) for signal in signals_to_flush}
-            for signal in signals_to_flush:
+            signals = {self.signal_session.merge(signal, load=False) for signal in signals}
+            for signal in signals:
                 model = type(signal)
                 try:
                     signal.send_signalbus_message()
@@ -221,9 +221,9 @@ class SignalBus(object):
                     break
             self.signal_session.commit()
             self.signal_session.expire_all()
-        elif signals_to_flush:
+        elif signals:
             self.logger.debug('Flushing skipped, "autoflush" is False.')
-        signals_to_flush.clear()
+        signals.clear()
 
     def _flush_signals(self, model, pk_values_set):
         self.logger.debug('Flushing %s.', model.__name__)
