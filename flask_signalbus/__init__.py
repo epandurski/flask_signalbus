@@ -8,7 +8,6 @@ import logging
 from functools import wraps
 from sqlalchemy import event, inspect
 from sqlalchemy.exc import DBAPIError
-from . import cli
 
 ERROR_CODE_ATTRS = ['pgcode', 'sqlstate']
 DEADLOCK_ERROR_CODES = ['40001', '40P01']
@@ -222,6 +221,8 @@ class SignalBus(object):
         return sent_count
 
     def _init_app(self, app):
+        from . import cli
+
         if not hasattr(app, 'extensions'):
             app.extensions = {}
         if app.extensions.get('signalbus') not in [None, self]:
