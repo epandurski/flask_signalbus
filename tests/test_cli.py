@@ -1,39 +1,39 @@
 def test_flush_empty(app, signalbus):
     runner = app.test_cli_runner()
-    result = runner.invoke(args=['signalbus', 'flush'])
+    result = runner.invoke(args=['signalbus', 'flush', '--wait', '0'])
     assert not result.output
 
 
 def test_flush_pending(app, signalbus_with_pending_signal):
     runner = app.test_cli_runner()
-    result = runner.invoke(args=['signalbus', 'flush'])
+    result = runner.invoke(args=['signalbus', 'flush', '--wait', '0'])
     assert '1' in result.output
     assert 'processed' in result.output
 
 
 def test_flush_pending_explicit(app, signalbus_with_pending_signal):
     runner = app.test_cli_runner()
-    result = runner.invoke(args=['signalbus', 'flush', 'Signal'])
+    result = runner.invoke(args=['signalbus', 'flush', '--wait', '0', 'Signal'])
     assert '1' in result.output
     assert 'processed' in result.output
 
 
 def test_flush_pending_explicit_wrong_name(app, signalbus_with_pending_signal):
     runner = app.test_cli_runner()
-    result = runner.invoke(args=['signalbus', 'flush', 'WrongSignalName'])
+    result = runner.invoke(args=['signalbus', 'flush', '--wait', '0', 'WrongSignalName'])
     assert not ('1' in result.output and 'processed' in result.output)
     assert 'Warning' in result.output
 
 
 def test_flush_pending_exclude(app, signalbus_with_pending_signal):
     runner = app.test_cli_runner()
-    result = runner.invoke(args=['signalbus', 'flush', '--exclude', 'Signal'])
+    result = runner.invoke(args=['signalbus', 'flush', '--wait', '0', '--exclude', 'Signal'])
     assert not result.output
 
 
 def test_flush_pending_exclude_wrong_name(app, signalbus_with_pending_signal):
     runner = app.test_cli_runner()
-    result = runner.invoke(args=['signalbus', 'flush', '--exclude', 'WrongSignalName'])
+    result = runner.invoke(args=['signalbus', 'flush', '--wait', '0', '--exclude', 'WrongSignalName'])
     assert 'Warning' in result.output
     assert '1' in result.output
     assert 'processed' in result.output
@@ -41,7 +41,7 @@ def test_flush_pending_exclude_wrong_name(app, signalbus_with_pending_signal):
 
 def test_flush_error(app, signalbus_with_pending_error):
     runner = app.test_cli_runner()
-    result = runner.invoke(args=['signalbus', 'flush'])
+    result = runner.invoke(args=['signalbus', 'flush', '--wait', '0'])
     assert isinstance(result.exception, ValueError)
 
 

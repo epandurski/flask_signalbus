@@ -156,11 +156,14 @@ class SignalBus(object):
             )
         ]
 
-    def flush(self, models=None):
+    def flush(self, models=None, wait=3.0):
         """Send all pending signals over the message bus.
 
         :param models: If passed, flushes only signals of the specified types.
         :type models: list(`signal-model`) or `None`
+        :param float wait: The number of seconds the method will wait
+            after obtaining the list of pending signals, to allow
+            concurrent senders to complete.
         :return: The total number of signals that have been sent
 
         """
@@ -179,7 +182,7 @@ class SignalBus(object):
                 pk_values_list = self.signal_session.query(*pk_attrs).all()
                 pks_to_flush[model] = set(pk_values_list)
             self.signal_session.rollback()
-            time.sleep(3.0)
+            time.sleep(wait)
             return sum(
                 self._flush_signals_with_retry(model, pks_to_flush[model])
                 for model in models_to_flush
