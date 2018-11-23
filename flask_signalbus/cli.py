@@ -1,3 +1,4 @@
+import sys
 import click
 from flask.cli import with_appcontext
 from flask import current_app
@@ -38,6 +39,37 @@ def flush(signal_names, exclude, wait):
         click.echo('Warning: A signal with name "{}" does not exist.'.format(name))
     models_to_flush = [m for m in models_to_flush if m.__name__ not in exclude]
     signal_count = signalbus.flush(models_to_flush, wait=wait)
+    if signal_count == 1:
+        click.echo('{} signal has been successfully processed.'.format(signal_count))
+    elif signal_count > 1:
+        click.echo('{} signals have been successfully processed.'.format(signal_count))
+
+
+@signalbus.command()
+@with_appcontext
+@click.argument('signal_name')
+def flushmany(signal_name):
+    """Send a potentially huge number of pending signals over the message bus.
+
+    SIGNAL_NAME specifies the type of signals to flush.
+
+    This command assumes that the number of pending signals might be
+    huge, so that they might not fit into memory. However, it is not
+    very smart in handling concurrent senders. It is mostly useful
+    when recovering from long periods of disconnectedness from the
+    message bus.
+
+    """
+
+    signalbus = current_app.extensions['signalbus']
+    signal_models = signalbus.get_signal_models()
+    try:
+        idx = [m.__name__ for m in signal_models].index(signal_name)
+    except ValueError:
+        click.echo('Error: A signal with name "{}" does not exist.'.format(signal_name))
+        sys.exit(1)
+    model = signal_models[idx]
+    signal_count = signalbus.flushmany(model)
     if signal_count == 1:
         click.echo('{} signal has been successfully processed.'.format(signal_count))
     elif signal_count > 1:

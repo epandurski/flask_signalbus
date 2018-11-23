@@ -57,6 +57,12 @@ def test_flush_all_signal_models(app, signalbus, Signal, NonSignal):
     signalbus.flush(wait=0.0)
 
 
+def test_flushmany_signal_model(app, signalbus_with_pending_signal, Signal, NonSignal):
+    assert signalbus_with_pending_signal.flushmany(Signal) == 1
+    with pytest.raises(RuntimeError):
+        signalbus_with_pending_signal.flushmany(NonSignal)
+
+
 def test_send_signal_success(db, signalbus, send_mock, Signal):
     sig = Signal(name='signal', value='1')
     db.session.add(sig)
