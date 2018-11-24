@@ -1,4 +1,3 @@
-import sys
 import click
 from flask.cli import with_appcontext
 from flask import current_app
