@@ -45,24 +45,23 @@ def test_flush_error(app, signalbus_with_pending_error):
     assert isinstance(result.exception, ValueError)
 
 
+def test_flushmany_nosignals(app, signalbus):
+    runner = app.test_cli_runner()
+    result = runner.invoke(args=['signalbus', 'flushmany'])
+    assert not result.output
+
+
 def test_flushmany_empty(app, signalbus, Signal):
     runner = app.test_cli_runner()
-    result = runner.invoke(args=['signalbus', 'flushmany', 'Signal'])
+    result = runner.invoke(args=['signalbus', 'flushmany'])
     assert not result.output
 
 
 def test_flushmany_pending(app, signalbus_with_pending_signal):
     runner = app.test_cli_runner()
-    result = runner.invoke(args=['signalbus', 'flushmany', 'Signal'])
+    result = runner.invoke(args=['signalbus', 'flushmany'])
     assert '1' in result.output
     assert 'processed' in result.output
-
-
-def test_flushmany_wrong_name(app, signalbus_with_pending_signal):
-    runner = app.test_cli_runner()
-    result = runner.invoke(args=['signalbus', 'flushmany', 'WrongSignalName'])
-    assert 'Error' in result.output
-    assert not ('1' in result.output and 'processed' in result.output)
 
 
 def test_show_signals(app, signalbus_with_pending_signal):

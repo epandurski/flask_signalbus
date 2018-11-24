@@ -196,7 +196,7 @@ class SignalBus(object):
         finally:
             self.signal_session.remove()
 
-    def flushmany(self, model):
+    def flushmany(self):
         """Send a potentially huge number of pending signals over the message bus.
 
         This method assumes that the number of pending signals might
@@ -205,23 +205,15 @@ class SignalBus(object):
         senders. It is mostly useful when recovering from long periods
         of disconnectedness from the message bus.
 
-        :param model: The type of signals to flush
-        :type model: `signal-model`
         :return: The total number of signals that have been sent
 
         """
 
-        _raise_error_if_not_signal_model(model)
-        sent_count = 0
+        models_to_flush = self.get_signal_models()
         try:
-            while True:
-                n = self._flush_signals(model, max_count=FLUSHMANY_LIMIT)
-                sent_count += n
-                if n < FLUSHMANY_LIMIT:
-                    break
+            return sum(self._flushmany_signals(model) for model in models_to_flush)
         finally:
             self.signal_session.remove()
-        return sent_count
 
     def _init_app(self, app):
         from . import cli
@@ -261,6 +253,15 @@ class SignalBus(object):
             if get_db_error_code(e.orig) not in DEADLOCK_ERROR_CODES:
                 self.logger.exception('Caught database error during autoflush.')
             self.signal_session.rollback()
+
+    def _flushmany_signals(self, model):
+        sent_count = 0
+        while True:
+            n = self._flush_signals(model, max_count=FLUSHMANY_LIMIT)
+            sent_count += n
+            if n < FLUSHMANY_LIMIT:
+                break
+        return sent_count
 
     def _flush_signals(self, model, pk_values_set=None, max_count=None):
         self.logger.info('Flushing %s.', model.__name__)

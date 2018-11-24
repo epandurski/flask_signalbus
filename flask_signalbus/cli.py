@@ -51,11 +51,8 @@ def flush(signal_names, exclude, wait):
 
 @signalbus.command()
 @with_appcontext
-@click.argument('signal_name')
-def flushmany(signal_name):
+def flushmany():
     """Send a potentially huge number of pending signals over the message bus.
-
-    SIGNAL_NAME specifies the type of signals to flush.
 
     This command assumes that the number of pending signals might be
     huge, so that they might not fit into memory. However, it is not
@@ -66,14 +63,7 @@ def flushmany(signal_name):
     """
 
     signalbus = current_app.extensions['signalbus']
-    signal_models = signalbus.get_signal_models()
-    try:
-        idx = [m.__name__ for m in signal_models].index(signal_name)
-    except ValueError:
-        click.echo('Error: A signal with name "{}" does not exist.'.format(signal_name))
-        sys.exit(1)
-    model = signal_models[idx]
-    signal_count = signalbus.flushmany(model)
+    signal_count = signalbus.flushmany()
     if signal_count == 1:
         click.echo('{} signal has been successfully processed.'.format(signal_count))
     elif signal_count > 1:
