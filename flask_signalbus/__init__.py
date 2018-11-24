@@ -255,6 +255,7 @@ class SignalBus(object):
             self.signal_session.rollback()
 
     def _flushmany_signals(self, model):
+        self.logger.warning('Flushing %s in "flushmany" mode.', model.__name__)
         sent_count = 0
         while True:
             n = self._flush_signals(model, max_count=FLUSHMANY_LIMIT)
@@ -264,9 +265,10 @@ class SignalBus(object):
         return sent_count
 
     def _flush_signals(self, model, pk_values_set=None, max_count=None):
-        self.logger.info('Flushing %s.', model.__name__)
         query = self.signal_session.query(model)
-        if max_count is not None:
+        if max_count is None:
+            self.logger.info('Flushing %s.', model.__name__)
+        else:
             query = query.limit(max_count)
         signals = query.all()
         self.signal_session.commit()
