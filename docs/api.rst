@@ -22,16 +22,21 @@ subclass of ``db.Model``), which however has a
   class MySignal(db.Model):
       id = db.Column(db.Integer, primary_key=True, autoincrement=True)
       message_text = db.Column(db.Text, nullable=False)
-      signalbus_burst_count = 10
+      signalbus_autoflush = True
 
       def send_signalbus_message(self):
           """Send the message to the enterprise message bus."""
 
-In addition, the signal model class may have a
-``signalbus_burst_count`` integer attribute defined, which determines
-how many individual signals will be deleted at once, as a part of one
-database transaction. This might be useful in some cases, to improve
-performace. If not defined, it defaults to ``1``.
+- The signal model class may have a ``signalbus_autoflush`` boolean
+  attribute defined, which determines if signals of that type will be
+  automatically sent over the message bus after each transaction
+  commit. If not defined, it defaults to `True`.
+
+- The signal model class may have a ``signalbus_burst_count`` integer
+  attribute defined, which determines how many individual signals will
+  be deleted at once, as a part of one database transaction. This
+  might be useful in some cases, to improve performace. If not
+  defined, it defaults to ``1``.
 
 
 Classes

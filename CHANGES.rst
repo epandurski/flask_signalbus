@@ -9,6 +9,9 @@ Version 0.3.2
 - Added `wait` optional argument to the `SignalBus.flush` method and
   the `flush` CLI command.
 
+- Added optional `signalbus_autoflush` attribute to signal models,
+  which defaults to `True`.
+
 
 Version 0.3.1
 -------------

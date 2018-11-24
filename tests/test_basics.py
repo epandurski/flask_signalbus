@@ -100,6 +100,14 @@ def test_autoflush_false(db, signalbus, send_mock, Signal):
     assert Signal.query.count() == 0
 
 
+def test_model_autoflush_false(db, signalbus, send_mock, Signal):
+    Signal.signalbus_autoflush = False
+    db.session.add(Signal(name='signal', value='1'))
+    db.session.commit()
+    assert send_mock.call_count == 0
+    assert Signal.query.count() == 1
+
+
 def test_send_nonsignal_model(db, signalbus, send_mock, NonSignal):
     assert len(signalbus.get_signal_models()) == 0
     db.session.add(NonSignal())

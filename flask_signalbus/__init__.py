@@ -227,7 +227,7 @@ class SignalBus(object):
 
     def _transient_to_pending_handler(self, session, instance):
         model = type(instance)
-        if hasattr(model, 'send_signalbus_message'):
+        if hasattr(model, 'send_signalbus_message') and getattr(model, 'signalbus_autoflush', True):
             signals_to_flush = session.info.setdefault(SIGNALS_TO_FLUSH_SESSION_INFO_KEY, set())
             signals_to_flush.add(instance)
 
