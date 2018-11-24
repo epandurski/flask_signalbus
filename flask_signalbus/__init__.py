@@ -9,6 +9,9 @@ from functools import wraps
 from sqlalchemy import event, inspect
 from sqlalchemy.exc import DBAPIError
 
+__all__ = ['SignalBus', 'SignalBusMixin']
+
+
 ERROR_CODE_ATTRS = ['pgcode', 'sqlstate']
 DEADLOCK_ERROR_CODES = ['40001', '40P01']
 SIGNALS_TO_FLUSH_SESSION_INFO_KEY = 'flask_signalbus__signals_to_flush'
