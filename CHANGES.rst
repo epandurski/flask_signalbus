@@ -12,6 +12,9 @@ Version 0.3.2
 - Added optional `signalbus_autoflush` attribute to signal models,
   which defaults to `True`.
 
+- Fix a bug caused by not clearing the set of signals added to the
+  session on rollback.
+
 
 Version 0.3.1
 -------------

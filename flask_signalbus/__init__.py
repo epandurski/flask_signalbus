@@ -128,6 +128,7 @@ class SignalBus(object):
         self._flush_signals_with_retry = retry(self._flush_signals)
         event.listen(self.db.session, 'transient_to_pending', self._transient_to_pending_handler)
         event.listen(self.db.session, 'after_commit', self._safe_after_commit_handler)
+        event.listen(self.db.session, 'after_rollback', self._after_rollback_handler)
         if init_app:
             if db.app is None:
                 raise RuntimeError(
@@ -245,6 +246,9 @@ class SignalBus(object):
                 self.signal_session.delete(signal)
             self.signal_session.commit()
             self.signal_session.expire_all()
+
+    def _after_rollback_handler(self, session):
+        session.info.pop(SIGNALS_TO_FLUSH_SESSION_INFO_KEY, None)
 
     def _safe_after_commit_handler(self, session):
         try:
