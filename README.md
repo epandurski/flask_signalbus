@@ -9,7 +9,7 @@ Flask-SignalBus
 In microservices, the temptation to do distributed transactions pops
 up all the time.
 
-*Distributed transaction*:
+*Distributed transaction*
 : any situation where a single event results in the mutation of two
   separate sources of data which cannot be committed atomically
 
