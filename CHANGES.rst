@@ -18,6 +18,8 @@ Version 0.3.2
 - Change `flush` and `flushmany` to obtain row lock before sending the
   message, thus avoiding some rare concurrency issues.
 
+- Improved docs
+
 
 Version 0.3.1
 -------------
