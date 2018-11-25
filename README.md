@@ -10,8 +10,8 @@ In microservices, the temptation to do distributed transactions pops
 up all the time.
 
 *Distributed transaction*
-: any situation where a single event results in the mutation of two
-  separate sources of data which cannot be committed atomically
+:  any situation where a single event results in the mutation of two
+   separate sources of data which cannot be committed atomically
 
 One practical and popular solution is to pick one of the services to
 be the primary handler for some particular event. This service will
