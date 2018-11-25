@@ -28,11 +28,11 @@ pytest_runner = ['pytest-runner'] if needs_pytest else []
 
 setup(
     name='Flask-SignalBus',
-    version='0.3.2',
+    version='0.3.3',
     url='https://github.com/epandurski/flask_signalbus',
     license='MIT',
     author='Evgeni Pandurski',
-    author_email='epandurski@github.com',
+    author_email='epandurski@gmail.com',
     description='A Flask-SQLAlchemy extension for atomically sending messages (signals) over a message bus',
     long_description=__doc__,
     packages=['flask_signalbus'],
