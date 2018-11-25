@@ -1,6 +1,12 @@
 Changelog
 =========
 
+Version 0.3.3
+-------------
+
+- Change author's email address
+
+
 Version 0.3.2
 -------------
 
