@@ -15,6 +15,9 @@ Version 0.3.2
 - Fixed a bug caused by not clearing the set of signals added to the
   session on rollback.
 
+- Change `flush` and `flushmany` to obtain row lock before sending the
+  message, thus avoiding some rare concurrency issues.
+
 
 Version 0.3.1
 -------------

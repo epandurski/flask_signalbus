@@ -6,7 +6,7 @@ messages (signals) over a message bus.
 import time
 import logging
 from functools import wraps
-from sqlalchemy import event, inspect
+from sqlalchemy import event, inspect, and_
 from sqlalchemy.exc import DBAPIError
 
 __all__ = ['SignalBus', 'SignalBusMixin']
@@ -258,6 +258,11 @@ class SignalBus(object):
                 self.logger.exception('Caught database error during autoflush.')
             self.signal_session.rollback()
 
+    def _get_lock_for_update(self, pk_attrs, pk_values):
+        clause = and_(*[attr == value for attr, value in zip(pk_attrs, pk_values)])
+        query = self.signal_session.query(*pk_attrs).filter(clause).with_for_update()
+        return query.one_or_none() is not None
+
     def _flushmany_signals(self, model):
         self.logger.warning('Flushing %s in "flushmany" mode.', model.__name__)
         sent_count = 0
@@ -279,9 +284,13 @@ class SignalBus(object):
         burst_count = int(getattr(model, 'signalbus_burst_count', 1))
         sent_count = 0
         m = inspect(model)
+        pk_attrs = [m.get_property_by_column(c).class_attribute for c in m.primary_key]
         for signal in signals:
             pk_values = m.primary_key_from_instance(signal)
             if pk_values_set is None or pk_values in pk_values_set:
+                if not self._get_lock_for_update(pk_attrs, pk_values):
+                    # The row has been deleted by a concurrent sender.
+                    continue
                 signal.send_signalbus_message()
                 self.signal_session.delete(signal)
                 sent_count += 1
