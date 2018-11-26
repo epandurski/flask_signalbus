@@ -1,5 +1,5 @@
-Welcome to Flask-SignalBus's documentation!
-===========================================
+Flask-SignalBus
+===============
 
 **Flask-SignalBus** adds to Flask-SQLAlchemy the capability to
 *atomically* send messages (signals) over a message bus.
