@@ -226,6 +226,11 @@ class SignalBus(object):
         app.extensions['signalbus'] = self
         app.cli.add_command(cli.signalbus)
 
+        @app.teardown_appcontext
+        def shutdown_signal_session(response_or_exc):
+            self.signal_session.remove()
+            return response_or_exc
+
     def _transient_to_pending_handler(self, session, instance):
         model = type(instance)
         if hasattr(model, 'send_signalbus_message') and getattr(model, 'signalbus_autoflush', True):

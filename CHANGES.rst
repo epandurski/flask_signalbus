@@ -1,6 +1,12 @@
 Changelog
 =========
 
+Version 0.3.4
+-------------
+
+- Fixed leaking signal sessions bug.
+
+
 Version 0.3.3
 -------------
 
