@@ -1,8 +1,17 @@
 import flask
 import pytest
+from sqlalchemy.engine import Engine
+from sqlalchemy import event
 import flask_sqlalchemy as fsa
 import flask_signalbus as fsb
 from mock import Mock
+
+
+@event.listens_for(Engine, "connect")
+def set_sqlite_pragma(dbapi_connection, connection_record):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.close()
 
 
 class SignalBusAlchemy(fsb.SignalBusMixin, fsa.SQLAlchemy):
@@ -15,6 +24,7 @@ def app(request):
     app.testing = True
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['SQLALCHEMY_RECORD_QUERIES'] = True
     return app
 
 
@@ -74,12 +84,27 @@ def Signal(db, send_mock):
         value = db.Column(db.String(60))
 
         def send_signalbus_message(self):
-            send_mock(self.id, self.name, self.value)
+            properties = getattr(self, 'properties', [])
+            send_mock(self.id, self.name, self.value, {p.name: p.value for p in properties})
             if self.name == 'error':
                 raise ValueError(self.value)
 
     db.create_all()
     yield Signal
+    db.drop_all()
+
+
+@pytest.fixture
+def SignalProperty(db, send_mock, Signal):
+    class SignalProperty(db.Model):
+        __tablename__ = 'test_signal_property'
+        signal_id = db.Column(db.ForeignKey(Signal.id, ondelete='CASCADE'), primary_key=True)
+        name = db.Column(db.String(60), primary_key=True)
+        value = db.Column(db.String(60))
+        signal = db.relationship(Signal, backref=db.backref("properties", passive_deletes='all'))
+
+    db.create_all()
+    yield SignalProperty
     db.drop_all()
 
 
