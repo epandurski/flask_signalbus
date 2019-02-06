@@ -18,6 +18,10 @@ SIGNALS_TO_FLUSH_SESSION_INFO_KEY = 'flask_signalbus__signals_to_flush'
 FLUSHMANY_LIMIT = 1000
 
 
+class DBSerializationError(Exception):
+    """The transaction is rolled back due to a race condition."""
+
+
 def get_db_error_code(exception):
     """Return 5-character SQLSTATE code, or '' if not available.
 
@@ -43,9 +47,13 @@ def retry_on_deadlock(session, retries=6, min_wait=0.1, max_wait=10.0):
             while True:
                 try:
                     return action(*args, **kwargs)
-                except DBAPIError as e:
+                except (DBAPIError, DBSerializationError) as e:
                     num_failures += 1
-                    if num_failures > retries or get_db_error_code(e.orig) not in DEADLOCK_ERROR_CODES:
+                    is_serialization_error = (
+                        isinstance(e, DBSerializationError) or
+                        get_db_error_code(e.orig) in DEADLOCK_ERROR_CODES,
+                    )
+                    if num_failures > retries or not is_serialization_error:
                         raise
                 session.rollback()
                 wait_seconds = min(max_wait, min_wait * 2 ** (num_failures - 1))

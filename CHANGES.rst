@@ -1,6 +1,13 @@
 Changelog
 =========
 
+Version 0.3.5
+-------------
+
+- Make the undocumented `retry_on_deadlock` function more useful.
+- Add new tests
+
+
 Version 0.3.4
 -------------
 

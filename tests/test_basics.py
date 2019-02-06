@@ -1,6 +1,7 @@
+import sys
 import pytest
 import flask_sqlalchemy as fsa
-from flask_signalbus import SignalBus
+from flask_signalbus import SignalBus, retry_on_deadlock, DBSerializationError
 from .conftest import SignalBusAlchemy
 
 
@@ -175,3 +176,17 @@ def test_flush_signal_with_props(db, signalbus, send_mock, Signal, SignalPropert
     assert props['last_name'] == 'Doe'
     assert Signal.query.count() == 0
     assert SignalProperty.query.count() == 0
+
+
+def test_retry_on_deadlock(db):
+    retry = retry_on_deadlock(db.session, retries=5, max_wait=0.0)
+    executions = []
+
+    @retry
+    def f():
+        executions.append(1)
+        raise DBSerializationError
+
+    with pytest.raises(DBSerializationError):
+        f()
+    assert len(executions) == 6
