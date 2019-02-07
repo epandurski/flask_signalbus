@@ -51,7 +51,7 @@ def retry_on_deadlock(session, retries=6, min_wait=0.1, max_wait=10.0):
                     num_failures += 1
                     is_serialization_error = (
                         isinstance(e, DBSerializationError) or
-                        get_db_error_code(e.orig) in DEADLOCK_ERROR_CODES,
+                        get_db_error_code(e.orig) in DEADLOCK_ERROR_CODES
                     )
                     if num_failures > retries or not is_serialization_error:
                         raise

@@ -4,7 +4,7 @@ Changelog
 Version 0.3.6
 -------------
 
-- ?
+- Fixed regression, added test
 
 
 Version 0.3.5

@@ -1,8 +1,8 @@
-import sys
 import pytest
 import flask_sqlalchemy as fsa
 from flask_signalbus import SignalBus, retry_on_deadlock, DBSerializationError
 from .conftest import SignalBusAlchemy
+from sqlalchemy.exc import DBAPIError
 
 
 def test_create_signalbus_alchemy(app):
@@ -187,6 +187,15 @@ def test_retry_on_deadlock(db):
         executions.append(1)
         raise DBSerializationError
 
+    @retry
+    def g():
+        executions.append(1)
+        db.session.execute('xxx')
+
     with pytest.raises(DBSerializationError):
         f()
     assert len(executions) == 6
+
+    with pytest.raises(DBAPIError):
+        g()
+    assert len(executions) == 7
