@@ -1,6 +1,12 @@
 Changelog
 =========
 
+Version 0.4
+-------------
+
+- Added `atomic` utility module, still undocumented
+
+
 Version 0.3.6
 -------------
 

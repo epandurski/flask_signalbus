@@ -4,6 +4,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy import event
 import flask_sqlalchemy as fsa
 import flask_signalbus as fsb
+from flask_signalbus.atomic import AtomicProceduresMixin
 from mock import Mock
 
 
@@ -15,6 +16,10 @@ def set_sqlite_pragma(dbapi_connection, connection_record):
 
 
 class SignalBusAlchemy(fsb.SignalBusMixin, fsa.SQLAlchemy):
+    pass
+
+
+class AtomicSQLAlchemy(AtomicProceduresMixin, fsa.SQLAlchemy):
     pass
 
 
@@ -41,6 +46,15 @@ def db(app, request):
         db.app = app
 
     assert hasattr(db, 'signalbus')
+    assert db.get_app()
+    return db
+
+
+@pytest.fixture
+def atomic_db(app):
+    db = AtomicSQLAlchemy()
+    db.init_app(app)
+    db.app = app
     assert db.get_app()
     return db
 
@@ -116,4 +130,19 @@ def NonSignal(db):
 
     db.create_all()
     yield NonSignal
+    db.drop_all()
+
+
+@pytest.fixture
+def AtomicModel(atomic_db):
+    db = atomic_db
+
+    class AtomicModel(db.Model):
+        __tablename__ = 'test_atomic_model'
+        id = db.Column(db.Integer, primary_key=True)
+        name = db.Column(db.String(60), primary_key=True)
+        value = db.Column(db.String(60))
+
+    db.create_all()
+    yield AtomicModel
     db.drop_all()
