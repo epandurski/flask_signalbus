@@ -18,16 +18,6 @@ __all__ = ['AtomicProceduresMixin', 'ShardingKeyGenerationMixin']
 _ATOMIC_FLAG_SESSION_INFO_KEY = 'flask_signalbus__atomic_flag'
 
 
-@contextmanager
-def _retry_on_integrity_error(session):
-    session.flush()
-    try:
-        yield
-        session.flush()
-    except IntegrityError:
-        raise DBSerializationError
-
-
 class _ModelUtilitiesMixin(object):
     @classmethod
     def _get_instance(cls, instance_or_pk):
@@ -96,16 +86,20 @@ class AtomicProceduresMixin(object):
           assert f() == 'OK'
 
         This code defines the function `f`, which is wrapped in an
-        atomic block. Wrapping a function in an atomic block gives us
-        two guarantees:
+        atomic block. Wrapping a function in an atomic block gives two
+        guarantees:
 
-        1. The database transaction will be automatically comited if the
-           function returns normally, and automatically rolled back if the
-           function raises exception.
+        1. The database transaction will be automatically committed if
+           the function returns normally, and automatically rolled
+           back if the function raises unhandled exception.
 
         2. If a transaction serialization error occurs during the
-           execution of the function, the function will re-executed.
-           (This may happen several times.)
+           execution of the function, the function will be
+           re-executed. (This may happen several times.)
+
+        Atomic blocks can be nested, but in this case the outermost
+        block takes full control of transaction's life-cycle, and
+        inner blocks do nothing.
 
         """
 
@@ -143,20 +137,11 @@ class AtomicProceduresMixin(object):
 
         This code defines *and executes* the function `result` in an
         atomic block. At the end, the name `result` holds the value
-        returned from the function. Executing functions in an atomic block
-        gives us two guarantees:
-
-        1. The database transaction will be automatically comited if the
-           function returns normally, and automatically rolled back if the
-           function raises exception.
-
-        2. If a transaction serialization error occurs during the
-           execution of the function, the function will re-executed.
-           (This may happen several times.)
+        returned from the function.
 
         Note: `execute_atomic` can be called with more that one
-        argument. The extra arguments will be passed to the function given
-        as a first argument. For example::
+        argument. The extra arguments will be passed to the function
+        given as a first argument. Example::
 
           result = execute_atomic(write_to_db, 'a message')
 
@@ -164,24 +149,7 @@ class AtomicProceduresMixin(object):
 
         return self.atomic(__func__)(*args, **kwargs)
 
-    def modification(self, func):
-        """Raise assertion error if `func` is called outside of atomic block.
-
-        It is highly recommended to decorate all functions that write
-        to the database with `db.modification`. This prevents
-        accidental use of a function that writes to the database,
-        outside of an atomic block.
-
-        """
-
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            assert self.session.info.get(_ATOMIC_FLAG_SESSION_INFO_KEY), \
-                'calls to "{}" must be wrapped in "execute_atomic"'.format(func.__name__)
-            return func(*args, **kwargs)
-
-        return wrapper
-
+    @contextmanager
     def retry_on_integrity_error(self):
         """Re-raise `IntegrityError` as `DBSerializationError`.
 
@@ -191,7 +159,7 @@ class AtomicProceduresMixin(object):
         `IntegrityError` if another transaction have insterted it in the
         meantime. But if we do::
 
-          with retry_on_integrity_error():
+          with db.retry_on_integrity_error():
               db.session.add(instance)
 
         then if the before-mentioned race condition occurs,
@@ -200,10 +168,19 @@ class AtomicProceduresMixin(object):
         this time our prior-to-INSERT check will correctly detect a
         primary key collision.
 
-        Note: `retry_on_integrity_error()` triggers a session flush.
+        Note: `retry_on_integrity_error` triggers a session flush.
+
         """
 
-        return self.modification(_retry_on_integrity_error)(self.session)
+        session = self.session
+        assert session.info.get(_ATOMIC_FLAG_SESSION_INFO_KEY), \
+            'calls to "retry_on_integrity_error" must be wrapped in atomic block'
+        session.flush()
+        try:
+            yield
+            session.flush()
+        except IntegrityError:
+            raise DBSerializationError
 
 
 class ShardingKeyGenerationMixin(object):
