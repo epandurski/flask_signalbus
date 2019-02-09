@@ -2,8 +2,9 @@ import time
 from functools import wraps
 from sqlalchemy.exc import DBAPIError
 
+__all__ = ['DEADLOCK_ERROR_CODES', 'DBSerializationError', 'get_db_error_code', 'retry_on_deadlock']
 
-ERROR_CODE_ATTRS = ['pgcode', 'sqlstate']
+
 DEADLOCK_ERROR_CODES = ['40001', '40P01']
 
 
@@ -17,7 +18,7 @@ def get_db_error_code(exception):
     Currently `psycopg2`, `psycopg2cffi`, and `MySQL Connector` are supported.
     """
 
-    for attr in ERROR_CODE_ATTRS:
+    for attr in ['pgcode', 'sqlstate']:
         error_code = getattr(exception, attr, '')
         if error_code:
             break

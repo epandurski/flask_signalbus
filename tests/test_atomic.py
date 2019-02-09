@@ -1,6 +1,6 @@
 import pytest
-from flask_signalbus import DBSerializationError
 from mock import Mock
+from flask_signalbus.utils import DBSerializationError
 
 
 def test_execute_atomic(atomic_db):

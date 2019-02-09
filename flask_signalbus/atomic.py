@@ -1,3 +1,8 @@
+"""
+Adds to Flask-SQLAlchemy simple but powerful utilities for
+creating consistent and correct database APIs.
+"""
+
 import os
 import struct
 from functools import wraps
@@ -5,9 +10,12 @@ from contextlib import contextmanager
 from sqlalchemy.sql.expression import and_
 from sqlalchemy.inspection import inspect
 from sqlalchemy.exc import IntegrityError
-from flask_signalbus import DBSerializationError, retry_on_deadlock
+from flask_signalbus.utils import DBSerializationError, retry_on_deadlock
 
-ATOMIC_FLAG_SESSION_INFO_KEY = 'flask_signalbus__atomic_flag'
+__all__ = ['AtomicProceduresMixin', 'ShardingKeyGenerationMixin']
+
+
+_ATOMIC_FLAG_SESSION_INFO_KEY = 'flask_signalbus__atomic_flag'
 
 
 @contextmanager
@@ -110,10 +118,10 @@ class AtomicProceduresMixin(object):
 
         session = self.session
         session_info = session.info
-        assert not session_info.get(ATOMIC_FLAG_SESSION_INFO_KEY), \
+        assert not session_info.get(_ATOMIC_FLAG_SESSION_INFO_KEY), \
             '"execute_atomic" calls can not be nested'
         func = retry_on_deadlock(session)(__func__)
-        session_info[ATOMIC_FLAG_SESSION_INFO_KEY] = True
+        session_info[_ATOMIC_FLAG_SESSION_INFO_KEY] = True
         try:
             result = func(*args, **kwargs)
             session.commit()
@@ -122,7 +130,7 @@ class AtomicProceduresMixin(object):
             session.rollback()
             raise
         finally:
-            session_info[ATOMIC_FLAG_SESSION_INFO_KEY] = False
+            session_info[_ATOMIC_FLAG_SESSION_INFO_KEY] = False
 
     def modification(self, func):
         """Raise assertion error if `func` is called outside of atomic block.
@@ -136,7 +144,7 @@ class AtomicProceduresMixin(object):
 
         @wraps(func)
         def wrapper(*args, **kwargs):
-            assert self.session.info.get(ATOMIC_FLAG_SESSION_INFO_KEY), \
+            assert self.session.info.get(_ATOMIC_FLAG_SESSION_INFO_KEY), \
                 'calls to "{}" must be wrapped in "execute_atomic"'.format(func.__name__)
             return func(*args, **kwargs)
 
