@@ -83,3 +83,8 @@ def test_retry_on_integrity_error_slow(atomic_db, AtomicModel):
                 call_list.append(1)
                 db.session.add(o)
     assert len(call_list) > 1
+
+
+def test_create_sharding_key(ShardingKey):
+    assert ShardingKey().sharding_key_value
+    assert hasattr(ShardingKey, 'generate')

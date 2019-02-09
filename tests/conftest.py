@@ -4,7 +4,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy import event
 import flask_sqlalchemy as fsa
 import flask_signalbus as fsb
-from flask_signalbus.atomic import AtomicProceduresMixin
+from flask_signalbus.atomic import AtomicProceduresMixin, ShardingKeyGenerationMixin
 from mock import Mock
 
 
@@ -130,6 +130,17 @@ def NonSignal(db):
 
     db.create_all()
     yield NonSignal
+    db.drop_all()
+
+
+@pytest.fixture
+def ShardingKey(db):
+    class ShardingKey(ShardingKeyGenerationMixin, db.Model):
+        __tablename__ = 'test_sharding_key'
+        sharding_key_value = db.Column(db.BigInteger, primary_key=True, autoincrement=False)
+
+    db.create_all()
+    yield ShardingKey
     db.drop_all()
 
 
