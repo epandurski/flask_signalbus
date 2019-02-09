@@ -113,8 +113,8 @@ class AtomicProceduresMixin(object):
         def wrapper(*args, **kwargs):
             session = self.session
             session_info = session.info
-            assert not session_info.get(_ATOMIC_FLAG_SESSION_INFO_KEY), \
-                '"atomic" blocks can not be nested'
+            if session_info.get(_ATOMIC_FLAG_SESSION_INFO_KEY):
+                return func(*args, **kwargs)
             f = retry_on_deadlock(session)(func)
             session_info[_ATOMIC_FLAG_SESSION_INFO_KEY] = True
             try:

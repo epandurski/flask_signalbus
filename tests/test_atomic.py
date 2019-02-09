@@ -26,7 +26,9 @@ def test_atomic(atomic_db):
 def test_execute_atomic(atomic_db):
     db = atomic_db
     commit = Mock()
+    rollback = Mock()
     db.session.commit = commit
+    db.session.rollback = rollback
     var = 1
 
     with pytest.raises(RuntimeError):
@@ -34,23 +36,34 @@ def test_execute_atomic(atomic_db):
         def f1():
             raise RuntimeError
     commit.assert_not_called()
-
-    with pytest.raises(AssertionError):
-        @db.execute_atomic
-        def f2():
-            @db.execute_atomic
-            def recursive():
-                pass
-    commit.assert_not_called()
+    rollback.assert_called_once()
 
     @db.execute_atomic
-    def f3():
+    def f2():
         assert var == 1
         return 666
     commit.assert_called_once()
-    assert f3 == 666
+    rollback.assert_called_once()
+    assert f2 == 666
 
     assert db.execute_atomic(lambda x: x, 777) == 777
+
+
+def test_nested_execute_atomic(atomic_db):
+    db = atomic_db
+    commit = Mock()
+    rollback = Mock()
+    db.session.commit = commit
+    db.session.rollback = rollback
+
+    @db.execute_atomic
+    def f1():
+        @db.execute_atomic
+        def f2():
+            pass
+
+    commit.assert_called_once()
+    rollback.assert_not_called()
 
 
 def test_retry_on_integrity_error(atomic_db, AtomicModel):
