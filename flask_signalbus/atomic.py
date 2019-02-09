@@ -83,10 +83,56 @@ class AtomicProceduresMixin(object):
         declarative_base._flask_signalbus_sa = self
         return declarative_base
 
+    def atomic(self, func):
+        """A decorator that wraps a function in an atomic block.
+
+        Example::
+
+          @atomic
+          def f():
+              write_to_db('a message')
+              return 'OK'
+
+          assert f() == 'OK'
+
+        This code defines the function `f`, which is wrapped in an
+        atomic block. Wrapping a function in an atomic block gives us
+        two guarantees:
+
+        1. The database transaction will be automatically comited if the
+           function returns normally, and automatically rolled back if the
+           function raises exception.
+
+        2. If a transaction serialization error occurs during the
+           execution of the function, the function will re-executed.
+           (This may happen several times.)
+
+        """
+
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            session = self.session
+            session_info = session.info
+            assert not session_info.get(_ATOMIC_FLAG_SESSION_INFO_KEY), \
+                '"atomic" blocks can not be nested'
+            f = retry_on_deadlock(session)(func)
+            session_info[_ATOMIC_FLAG_SESSION_INFO_KEY] = True
+            try:
+                result = f(*args, **kwargs)
+                session.commit()
+                return result
+            except Exception:
+                session.rollback()
+                raise
+            finally:
+                session_info[_ATOMIC_FLAG_SESSION_INFO_KEY] = False
+
+        return wrapper
+
     def execute_atomic(self, __func__, *args, **kwargs):
         """A decorator that executes a function in an atomic block.
 
-        For example::
+        Example::
 
           @execute_atomic
           def result():
@@ -116,21 +162,7 @@ class AtomicProceduresMixin(object):
 
         """
 
-        session = self.session
-        session_info = session.info
-        assert not session_info.get(_ATOMIC_FLAG_SESSION_INFO_KEY), \
-            '"execute_atomic" calls can not be nested'
-        func = retry_on_deadlock(session)(__func__)
-        session_info[_ATOMIC_FLAG_SESSION_INFO_KEY] = True
-        try:
-            result = func(*args, **kwargs)
-            session.commit()
-            return result
-        except Exception:
-            session.rollback()
-            raise
-        finally:
-            session_info[_ATOMIC_FLAG_SESSION_INFO_KEY] = False
+        return self.atomic(__func__)(*args, **kwargs)
 
     def modification(self, func):
         """Raise assertion error if `func` is called outside of atomic block.

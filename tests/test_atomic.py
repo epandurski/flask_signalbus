@@ -3,6 +3,26 @@ from mock import Mock
 from flask_signalbus.utils import DBSerializationError
 
 
+def test_atomic(atomic_db):
+    db = atomic_db
+    commit = Mock()
+    rollback = Mock()
+    db.session.commit = commit
+    db.session.rollback = rollback
+
+    @db.atomic
+    def f(x):
+        return 1 / x
+
+    with pytest.raises(ZeroDivisionError):
+        f(0)
+    commit.assert_not_called()
+    rollback.assert_called_once()
+    assert f(1) == 1
+    commit.assert_called_once()
+    rollback.assert_called_once()
+
+
 def test_execute_atomic(atomic_db):
     db = atomic_db
     commit = Mock()
