@@ -151,7 +151,7 @@ def AtomicModel(atomic_db):
     class AtomicModel(db.Model):
         __tablename__ = 'test_atomic_model'
         id = db.Column(db.Integer, primary_key=True)
-        name = db.Column(db.String(60), primary_key=True)
+        name = db.Column(db.String(60))
         value = db.Column(db.String(60))
 
     db.create_all()
