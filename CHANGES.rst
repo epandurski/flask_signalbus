@@ -1,10 +1,13 @@
 Changelog
 =========
 
-Version 0.4
+Version 0.3.7
 -------------
 
-- Added `atomic` utility module, still undocumented
+- Split implementation into two files: `signalbus.py` and  `utils.py`
+- Renamed `cli.py` to `signalbus_cli.py`
+- Added `atomic.py` module, still undocumented
+- Added new tests
 
 
 Version 0.3.6
