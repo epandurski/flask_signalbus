@@ -125,34 +125,34 @@ def test_get_instance(atomic_db, AtomicModel):
     db = atomic_db
     o = AtomicModel(id=1, name='test', value='1')
     assert o not in db.session
-    assert AtomicModel._get_instance(o) is None
+    assert AtomicModel.get_instance(o) is None
     db.session.add(o)
-    assert AtomicModel._get_instance(o) is o
+    assert AtomicModel.get_instance(o) is o
     assert o in db.session
     pk = o.id
     db.session.commit()
-    assert AtomicModel._get_instance(pk) in db.session
-    assert AtomicModel._get_instance((pk,)) in db.session
-    assert AtomicModel._get_instance(o) in db.session
+    assert AtomicModel.get_instance(pk) in db.session
+    assert AtomicModel.get_instance((pk,)) in db.session
+    assert AtomicModel.get_instance(o) in db.session
 
 
 def test_lock_instance(atomic_db, AtomicModel):
     db = atomic_db
     o = AtomicModel(id=1, name='test', value='1')
     assert o not in db.session
-    assert AtomicModel._lock_instance(o) is None
+    assert AtomicModel.lock_instance(o) is None
     db.session.add(o)
-    assert AtomicModel._lock_instance(o) is o
+    assert AtomicModel.lock_instance(o) is o
     assert o in db.session
     pk = o.id
     db.session.commit()
-    assert AtomicModel._lock_instance(pk) in db.session
-    assert AtomicModel._lock_instance((pk,)) in db.session
-    assert AtomicModel._lock_instance(o) in db.session
+    assert AtomicModel.lock_instance(pk) in db.session
+    assert AtomicModel.lock_instance((pk,)) in db.session
+    assert AtomicModel.lock_instance(o) in db.session
 
 
 def test_get_pk_values(atomic_db, AtomicModel):
     o = AtomicModel(id=1, name='test', value='1')
-    assert AtomicModel._get_pk_values(o) == (o.id,)
-    assert AtomicModel._get_pk_values(1) == (1,)
-    assert AtomicModel._get_pk_values((1,)) == (1,)
+    assert AtomicModel.get_pk_values(o) == (o.id,)
+    assert AtomicModel.get_pk_values(1) == (1,)
+    assert AtomicModel.get_pk_values((1,)) == (1,)

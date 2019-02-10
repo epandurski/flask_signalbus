@@ -18,7 +18,7 @@ _ATOMIC_FLAG_SESSION_INFO_KEY = 'flask_signalbus__atomic_flag'
 
 class _ModelUtilitiesMixin(object):
     @classmethod
-    def _get_instance(cls, instance_or_pk):
+    def get_instance(cls, instance_or_pk):
         """Return an instance in `db.session` when given any instance or a primary key."""
 
         if isinstance(instance_or_pk, cls):
@@ -28,17 +28,17 @@ class _ModelUtilitiesMixin(object):
         return cls.query.get(instance_or_pk)
 
     @classmethod
-    def _lock_instance(cls, instance_or_pk, read=False):
+    def lock_instance(cls, instance_or_pk, read=False):
         """Return a locked instance in `db.session` when given any instance or a primary key."""
 
         mapper = inspect(cls)
         pk_attrs = [mapper.get_property_by_column(c).class_attribute for c in mapper.primary_key]
-        pk_values = cls._get_pk_values(instance_or_pk)
+        pk_values = cls.get_pk_values(instance_or_pk)
         clause = and_(*[attr == value for attr, value in zip(pk_attrs, pk_values)])
         return cls.query.filter(clause).with_for_update(read=read).one_or_none()
 
     @classmethod
-    def _get_pk_values(cls, instance_or_pk):
+    def get_pk_values(cls, instance_or_pk):
         """Return a primary key as a tuple when given any instance or primary key."""
 
         if isinstance(instance_or_pk, cls):
