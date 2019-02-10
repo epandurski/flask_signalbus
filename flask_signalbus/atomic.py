@@ -73,7 +73,7 @@ class _ModelUtilitiesMixin(object):
                 session.rollback()
                 continue
             return instance
-        raise RuntimeError('Can not conjure an instance.')
+        raise RuntimeError('Can not conjure a "{}" instance.'.format(cls.__name__))
 
 
 class AtomicProceduresMixin(object):
