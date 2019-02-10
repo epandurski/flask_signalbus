@@ -3,8 +3,6 @@ Adds to Flask-SQLAlchemy simple but powerful utilities for
 creating consistent and correct database APIs.
 """
 
-import os
-import struct
 from functools import wraps
 from contextlib import contextmanager
 from sqlalchemy.sql.expression import and_
@@ -12,7 +10,7 @@ from sqlalchemy.inspection import inspect
 from sqlalchemy.exc import IntegrityError
 from flask_signalbus.utils import DBSerializationError, retry_on_deadlock
 
-__all__ = ['AtomicProceduresMixin', 'ShardingKeyGenerationMixin']
+__all__ = ['AtomicProceduresMixin']
 
 
 _ATOMIC_FLAG_SESSION_INFO_KEY = 'flask_signalbus__atomic_flag'
@@ -46,6 +44,34 @@ class _ModelUtilitiesMixin(object):
         if isinstance(instance_or_pk, cls):
             instance_or_pk = inspect(cls).primary_key_from_instance(instance_or_pk)
         return instance_or_pk if isinstance(instance_or_pk, tuple) else (instance_or_pk,)
+
+    @classmethod
+    def _conjure_instance(cls, *args, **kwargs):
+        """Continuously try to create an instance, flush it to the database, and return it.
+
+        This is useful, for example, when a constructor is defined
+        that generates a random primary key, which is not guaranteed
+        to be unique.
+
+        Note: This method uses database savepoints to recover after
+        unsuccessful database flush. It will not work correctly on
+        databases that do not support savepoints.
+
+        """
+
+        session = cls._flask_signalbus_sa.session
+        tries = kwargs.pop('__tries', 50)
+        for _ in range(tries):
+            instance = cls(*args, **kwargs)
+            session.begin_nested()
+            session.add(instance)
+            try:
+                session.commit()
+            except IntegrityError:
+                session.rollback()
+                continue
+            return instance
+        raise RuntimeError('Can not conjure an instance.')
 
 
 class AtomicProceduresMixin(object):
@@ -125,7 +151,7 @@ class AtomicProceduresMixin(object):
 
         return wrapper
 
-    def execute_atomic(self, __func__, *args, **kwargs):
+    def execute_atomic(self, __func, *args, **kwargs):
         """A decorator that executes a function in an atomic block.
 
         Example::
@@ -149,7 +175,7 @@ class AtomicProceduresMixin(object):
 
         """
 
-        return self.atomic(__func__)(*args, **kwargs)
+        return self.atomic(__func)(*args, **kwargs)
 
     @contextmanager
     def retry_on_integrity_error(self):
@@ -183,37 +209,3 @@ class AtomicProceduresMixin(object):
             session.flush()
         except IntegrityError:
             raise DBSerializationError
-
-
-class ShardingKeyGenerationMixin(object):
-    """Adds random sharding key generation functionality to a model.
-
-    The model should be defined as follows::
-
-      class SomeModelName(ShardingKeyGenerationMixin, db.Model):
-          sharding_key_value = db.Column(db.BigInteger, primary_key=True, autoincrement=False)
-    """
-
-    def __init__(self, sharding_key_value=None):
-        modulo = 1 << 63
-        if sharding_key_value is None:
-            sharding_key_value = struct.unpack('>q', os.urandom(8))[0] % modulo or 1
-        assert 0 < sharding_key_value < modulo
-        self.sharding_key_value = sharding_key_value
-
-    @classmethod
-    def generate(cls, sharding_key_value=None, tries=50):
-        """Create a unique instance and return its `sharding_key_value`."""
-
-        session = cls._flask_signalbus_sa.session
-        for _ in range(tries):
-            instance = cls(sharding_key_value=sharding_key_value)
-            session.begin_nested()
-            session.add(instance)
-            try:
-                session.commit()
-            except IntegrityError:
-                session.rollback()
-                continue
-            return instance.sharding_key_value
-        raise RuntimeError('Can not generate a unique sharding key.')

@@ -1,7 +1,7 @@
 import pytest
 import flask_sqlalchemy as fsa
 from flask_signalbus import SignalBus
-from .conftest import SignalBusAlchemy
+from conftest import SignalBusAlchemy
 
 
 def test_create_signalbus_alchemy(app):

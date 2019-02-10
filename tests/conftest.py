@@ -133,10 +133,12 @@ def NonSignal(db):
 
 
 @pytest.fixture
-def ShardingKey(db):
-    class ShardingKey(fsb.ShardingKeyGenerationMixin, db.Model):
+def ShardingKey(atomic_db):
+    db = atomic_db
+
+    class ShardingKey(db.Model):
         __tablename__ = 'test_sharding_key'
-        sharding_key_value = db.Column(db.BigInteger, primary_key=True, autoincrement=False)
+        id = db.Column(db.Integer, primary_key=True)
 
     db.create_all()
     yield ShardingKey
