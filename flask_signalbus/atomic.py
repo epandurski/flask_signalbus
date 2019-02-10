@@ -45,36 +45,6 @@ class _ModelUtilitiesMixin(object):
             instance_or_pk = inspect(cls).primary_key_from_instance(instance_or_pk)
         return instance_or_pk if isinstance(instance_or_pk, tuple) else (instance_or_pk,)
 
-    @classmethod
-    def _conjure_instance(cls, *args, **kwargs):
-        """Continuously try to create an instance, flush it to the database, and return it.
-
-        This is useful, for example, when a constructor is defined
-        that generates a random primary key, which is not guaranteed
-        to be unique.
-
-        Note: This method uses database savepoints to recover after
-        unsuccessful database flush. It will not work correctly on
-        databases that do not support savepoints. Also, on every
-        unsuccessful flush, the transaction will be rolled back to a
-        savepoint, which will expire all objects in the session.
-
-        """
-
-        session = cls._flask_signalbus_sa.session
-        tries = kwargs.pop('__tries', 50)
-        for _ in range(tries):
-            instance = cls(*args, **kwargs)
-            session.begin_nested()
-            session.add(instance)
-            try:
-                session.commit()
-            except IntegrityError:
-                session.rollback()
-                continue
-            return instance
-        raise RuntimeError('Can not conjure a "{}" instance.'.format(cls.__name__))
-
 
 class AtomicProceduresMixin(object):
     """Adds utility functions to :class:`~flask_sqlalchemy.SQLAlchemy` and the declarative base.

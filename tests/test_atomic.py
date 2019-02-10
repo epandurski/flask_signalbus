@@ -156,9 +156,3 @@ def test_get_pk_values(atomic_db, AtomicModel):
     assert AtomicModel._get_pk_values(o) == (o.id,)
     assert AtomicModel._get_pk_values(1) == (1,)
     assert AtomicModel._get_pk_values((1,)) == (1,)
-
-
-@pytest.mark.skip('SQLite does not support savepoints')
-def test_create_sharding_key(ShardingKey):
-    id_ = ShardingKey._conjure_instance().id
-    assert type(id_) is int
