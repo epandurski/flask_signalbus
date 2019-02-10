@@ -82,8 +82,11 @@ def test_retry_on_integrity_error(atomic_db, AtomicModel):
     @db.execute_atomic
     def t1():
         with db.retry_on_integrity_error():
-            db.session.merge(o)
+            return db.session.merge(o)
     assert len(AtomicModel.query.all()) == 1
+    assert t1 not in db.session
+    assert t1.name == 'test'
+    assert t1.value == '1'
 
     db.session.expunge_all()
     o.value = '2'

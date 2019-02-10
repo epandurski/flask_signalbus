@@ -113,6 +113,8 @@ class AtomicProceduresMixin(object):
             session_info[_ATOMIC_FLAG_SESSION_INFO_KEY] = True
             try:
                 result = f(*args, **kwargs)
+                session.flush()
+                session.expunge_all()
                 session.commit()
                 return result
             except Exception:
