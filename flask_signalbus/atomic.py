@@ -55,7 +55,9 @@ class _ModelUtilitiesMixin(object):
 
         Note: This method uses database savepoints to recover after
         unsuccessful database flush. It will not work correctly on
-        databases that do not support savepoints.
+        databases that do not support savepoints. Also, on every
+        unsuccessful flush, the transaction will be rolled back to a
+        savepoint, which will expire all objects in the session.
 
         """
 
