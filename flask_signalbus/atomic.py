@@ -176,7 +176,7 @@ class AtomicProceduresMixin(object):
 
         session = self.session
         assert session.info.get(_ATOMIC_FLAG_SESSION_INFO_KEY), \
-            'calls to "retry_on_integrity_error" must be wrapped in atomic block'
+            'Calls to "retry_on_integrity_error" must be wrapped in atomic block.'
         session.flush()
         try:
             yield
