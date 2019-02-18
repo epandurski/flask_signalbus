@@ -64,6 +64,11 @@ class AtomicProceduresMixin(object):
 
     """
 
+    def apply_driver_hacks(self, app, info, options):
+        if info.drivername != 'sqlite' and "isolation_level" not in options:
+            options["isolation_level"] = "REPEATABLE_READ"
+        return super().apply_driver_hacks(app, info, options)
+
     def make_declarative_base(self, model, *args, **kwargs):
         class model(_ModelUtilitiesMixin, model):
             pass
