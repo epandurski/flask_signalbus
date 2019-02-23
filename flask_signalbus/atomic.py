@@ -42,6 +42,7 @@ class _ModelUtilitiesMixin(object):
         """Return a primary key as a tuple when given any instance or primary key."""
 
         if isinstance(instance_or_pk, cls):
+            cls._flask_signalbus_sa.session.flush()
             instance_or_pk = inspect(cls).primary_key_from_instance(instance_or_pk)
         return instance_or_pk if isinstance(instance_or_pk, tuple) else (instance_or_pk,)
 
