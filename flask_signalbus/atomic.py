@@ -75,8 +75,8 @@ class AtomicProceduresMixin(object):
     Note that `AtomicProceduresMixin` should always come before
     :class:`~flask_sqlalchemy.SQLAlchemy`.
 
-    In addition to `AtomicProceduresMixin` method being available in
-    ``db``, the classmethods from
+    In addition to all `AtomicProceduresMixin` method being available
+    in ``db``, the classmethods from
     :class:`~flask_signalbus.atomic._ModelUtilitiesMixin` will be
     available in the declarative base class (``db.Model``). This means
     that they will also be available on every model instance.
