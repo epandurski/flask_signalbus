@@ -25,8 +25,8 @@ def _raise_error_if_not_signal_model(model):
 
 
 class SignalBusMixin(object):
-    """A **mixin class** that can be used to extend the
-    `flask_sqlalchemy.SQLAlchemy` class to handle signals.
+    """A **mixin class** that can be used to extend
+    :class:`~flask_sqlalchemy.SQLAlchemy` to handle signals.
 
     For example::
 

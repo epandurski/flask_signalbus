@@ -19,7 +19,7 @@ _ATOMIC_FLAG_SESSION_INFO_KEY = 'flask_signalbus__atomic_flag'
 class _ModelUtilitiesMixin(object):
     @classmethod
     def get_instance(cls, instance_or_pk):
-        """Return an instance in `db.session` when given any instance or a primary key."""
+        """Return an instance in ``db.session`` when given any instance or a primary key."""
 
         if isinstance(instance_or_pk, cls):
             if instance_or_pk in cls._flask_signalbus_sa.session:
@@ -29,7 +29,7 @@ class _ModelUtilitiesMixin(object):
 
     @classmethod
     def lock_instance(cls, instance_or_pk, read=False):
-        """Return a locked instance in `db.session` when given any instance or a primary key."""
+        """Return a locked instance in ``db.session`` when given any instance or a primary key."""
 
         mapper = inspect(cls)
         pk_attrs = [mapper.get_property_by_column(c).class_attribute for c in mapper.primary_key]
@@ -48,7 +48,8 @@ class _ModelUtilitiesMixin(object):
 
 
 class AtomicProceduresMixin(object):
-    """Adds utility functions to :class:`~flask_sqlalchemy.SQLAlchemy` and the declarative base.
+    """A **mixin class** that adds utility functions to
+    :class:`~flask_sqlalchemy.SQLAlchemy` and the declarative base.
 
     For example::
 
@@ -82,14 +83,14 @@ class AtomicProceduresMixin(object):
 
         Example::
 
-          @atomic
+          @db.atomic
           def f():
               write_to_db('a message')
               return 'OK'
 
           assert f() == 'OK'
 
-        This code defines the function `f`, which is wrapped in an
+        This code defines the function ``f``, which is wrapped in an
         atomic block. Wrapping a function in an atomic block gives two
         guarantees:
 
@@ -129,23 +130,23 @@ class AtomicProceduresMixin(object):
 
         return wrapper
 
-    def execute_atomic(self, __func, *args, **kwargs):
-        """A decorator that executes a function in an atomic block.
+    def execute_atomic(self, _fn, *args, **kwargs):
+        """A decorator that executes a function in an atomic block (see :meth:`atomic`).
 
         Example::
 
-          @execute_atomic
+          @db.execute_atomic
           def result():
               write_to_db('a message')
               return 'OK'
 
           assert result == 'OK'
 
-        This code defines *and executes* the function `result` in an
-        atomic block. At the end, the name `result` holds the value
+        This code defines *and executes* the function ``result`` in an
+        atomic block. At the end, the name ``result`` holds the value
         returned from the function.
 
-        Note: `execute_atomic` can be called with more that one
+        Note: :meth:`execute_atomic` can be called with more that one
         argument. The extra arguments will be passed to the function
         given as a first argument. Example::
 
@@ -153,26 +154,27 @@ class AtomicProceduresMixin(object):
 
         """
 
-        return self.atomic(__func)(*args, **kwargs)
+        return self.atomic(_fn)(*args, **kwargs)
 
     @contextmanager
     def retry_on_integrity_error(self):
-        """Re-raise `IntegrityError` as `DBSerializationError`.
+        """Re-raise :class:`~sqlalchemy.exc.IntegrityError` as `DBSerializationError`.
 
         This is mainly useful to handle race conditions in atomic
-        blocks. For example, even if prior to INSERT we verify that there
-        is no existing row with the given primary key, we still may get an
-        `IntegrityError` if another transaction have insterted it in the
-        meantime. But if we do::
+        blocks. For example, even if prior to INSERT we verify that
+        there is no existing row with the given primary key, we still
+        may get an :class:`~sqlalchemy.exc.IntegrityError` if another
+        transaction have insterted it in the meantime. But if we do::
 
           with db.retry_on_integrity_error():
               db.session.add(instance)
 
         then if the before-mentioned race condition occurs,
-        `DBSerializationError` will be raised instead of `IntegrityError`,
-        so that the transaction will be retried (by the atomic block), and
-        this time our prior-to-INSERT check will correctly detect a
-        primary key collision.
+        `DBSerializationError` will be raised instead of
+        :class:`~sqlalchemy.exc.IntegrityError`, so that the
+        transaction will be retried (by the atomic block), and this
+        time our prior-to-INSERT check will correctly detect a primary
+        key collision.
 
         Note: `retry_on_integrity_error` triggers a session flush.
 

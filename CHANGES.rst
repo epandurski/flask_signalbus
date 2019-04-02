@@ -7,7 +7,7 @@ Version 0.3.7
 - Split implementation into two files: `signalbus.py` and  `utils.py`
 - Renamed `cli.py` to `signalbus_cli.py`
 - Added `.circleci` directory
-- Added `atomic.py` module, still undocumented
+- Added `atomic.py` module
 - Added new tests
 
 

@@ -51,3 +51,14 @@ Mixins
 
 .. autoclass:: SignalBusMixin
    :members:
+
+
+.. autoclass:: AtomicProceduresMixin
+   :members:
+
+
+Exceptions
+``````````
+
+.. autoclass:: DBSerializationError
+   :members:
