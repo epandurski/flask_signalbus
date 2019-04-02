@@ -19,7 +19,10 @@ _ATOMIC_FLAG_SESSION_INFO_KEY = 'flask_signalbus__atomic_flag'
 class _ModelUtilitiesMixin(object):
     @classmethod
     def get_instance(cls, instance_or_pk):
-        """Return an instance in ``db.session`` when given any instance or a primary key."""
+        """Return an instance in ``db.session`` when given any model instance or a primary key.
+
+        Note: A composite primary key should be passed as a tuple.
+        """
 
         if isinstance(instance_or_pk, cls):
             if instance_or_pk in cls._flask_signalbus_sa.session:
@@ -29,7 +32,10 @@ class _ModelUtilitiesMixin(object):
 
     @classmethod
     def lock_instance(cls, instance_or_pk, read=False):
-        """Return a locked instance in ``db.session`` when given any instance or a primary key."""
+        """Return a locked instance in ``db.session`` when given any model instance or a primary key.
+
+        Note: A composite primary key should be passed as a tuple.
+        """
 
         mapper = inspect(cls)
         pk_attrs = [mapper.get_property_by_column(c).class_attribute for c in mapper.primary_key]
@@ -39,7 +45,10 @@ class _ModelUtilitiesMixin(object):
 
     @classmethod
     def get_pk_values(cls, instance_or_pk):
-        """Return a primary key as a tuple when given any instance or primary key."""
+        """Return a primary key as a tuple when given any model instance or primary key.
+
+        Note: A composite primary key should be passed as a tuple.
+        """
 
         if isinstance(instance_or_pk, cls):
             cls._flask_signalbus_sa.session.flush()
@@ -61,8 +70,16 @@ class AtomicProceduresMixin(object):
 
       db = CustomSQLAlchemy()
 
+      # `AtomicProceduresMixin` method are available in `db`
+
     Note that `AtomicProceduresMixin` should always come before
     :class:`~flask_sqlalchemy.SQLAlchemy`.
+
+    In addition to `AtomicProceduresMixin` method being available in
+    ``db``, the classmethods from
+    :class:`~flask_signalbus.atomic._ModelUtilitiesMixin` will be
+    available in the declarative base class (``db.Model``). This means
+    that they will also be available on every model instance.
 
     """
 

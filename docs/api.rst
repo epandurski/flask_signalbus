@@ -57,6 +57,10 @@ Mixins
    :members:
 
 
+.. autoclass:: flask_signalbus.atomic._ModelUtilitiesMixin
+   :members:
+
+
 Exceptions
 ``````````
 
