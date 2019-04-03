@@ -6,7 +6,23 @@
 Welcome to Flask-SignalBus's documentation!
 ===========================================
 
-**Flask-SignalBus** adds to Flask-SQLAlchemy the capability to
+Release v\ |release|. (:doc:`cli`, :doc:`api`, `Source Code`_)
+
+.. _Source Code: https://github.com/epandurski/flask_signalbus
+
+.. image:: https://badge.fury.io/py/Flask-SignalBus.svg
+   :target: https://badge.fury.io/py/Flask-SignalBus
+
+.. image:: https://img.shields.io/badge/License-MIT-yellow.svg
+   :target: https://opensource.org/licenses/MIT
+
+.. image:: https://circleci.com/gh/epandurski/flask_signalbus.svg?style=shield
+   :target: https://circleci.com/gh/epandurski/flask_signalbus
+
+.. _Flask-SQLAlchemy: http://flask-sqlalchemy.pocoo.org/
+
+
+**Flask-SignalBus** adds to `Flask-SQLAlchemy`_ the capability to
 *atomically* send messages (signals) over a message bus.
 
 The Problem
@@ -154,6 +170,14 @@ Transaction Management Utilities
 As a bonus, **Flask-SignalBus** offers some utilities for transaction
 management. See :class:`~flask_signalbus.AtomicProceduresMixin` for
 details.
+
+
+Installation
+````````````
+
+You can install Flask-SignalBus with :command:`pip`::
+
+    $ pip install Flask-SignalBus
 
 
 Contents:
