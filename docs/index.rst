@@ -172,14 +172,6 @@ management. See :class:`~flask_signalbus.AtomicProceduresMixin` for
 details.
 
 
-Installation
-````````````
-
-You can install Flask-SignalBus with :command:`pip`::
-
-    $ pip install Flask-SignalBus
-
-
 Contents:
 
 .. toctree::
