@@ -46,7 +46,7 @@ def test_execute_atomic(atomic_db):
     rollback.assert_called_once()
     assert f2 == 666
 
-    assert db.execute_atomic(lambda x: x, 777) == 777
+    assert db.execute_atomic(lambda: 777) == 777
 
 
 def test_nested_execute_atomic(atomic_db):

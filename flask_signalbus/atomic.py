@@ -19,9 +19,27 @@ _ATOMIC_FLAG_SESSION_INFO_KEY = 'flask_signalbus__atomic_flag'
 class _ModelUtilitiesMixin(object):
     @classmethod
     def get_instance(cls, instance_or_pk):
-        """Return an instance in ``db.session`` when given any model instance or a primary key.
+        """Return a model instance in ``db.session``.
 
-        Note: A composite primary key should be passed as a tuple.
+        :param instance_or_pk: An instance of this model class, or a
+          primary key. A composite primary key can be passed as a
+          tuple.
+
+        Example::
+
+          @db.atomic
+          def increase_account_balance(account, amount):
+              # Here `Account` is a subclass of `db.Model`.
+              account = Account.get_instance(account)
+              account.balance += amount
+
+          # Now `increase_account_balance` can be
+          # called with an account instance:
+          increase_account_balance(my_account, 100.00)
+
+          # or with an account primary key (1234):
+          increase_account_balance(1234, 100.00)
+
         """
 
         if isinstance(instance_or_pk, cls):
@@ -32,9 +50,15 @@ class _ModelUtilitiesMixin(object):
 
     @classmethod
     def lock_instance(cls, instance_or_pk, read=False):
-        """Return a locked instance in ``db.session`` when given any model instance or a primary key.
+        """Return a locked model instance in ``db.session``.
 
-        Note: A composite primary key should be passed as a tuple.
+        :param instance_or_pk: An instance of this model class, or a
+          primary key. A composite primary key can be passed as a
+          tuple.
+
+        :param read: If `True`, a reading lock is obtained instead of
+          a writing lock.
+
         """
 
         mapper = inspect(cls)
@@ -45,9 +69,12 @@ class _ModelUtilitiesMixin(object):
 
     @classmethod
     def get_pk_values(cls, instance_or_pk):
-        """Return a primary key as a tuple when given any model instance or primary key.
+        """Return a primary key as a tuple.
 
-        Note: A composite primary key should be passed as a tuple.
+        :param instance_or_pk: An instance of this model class, or a
+          primary key. A composite primary key can be passed as a
+          tuple.
+
         """
 
         if isinstance(instance_or_pk, cls):
@@ -58,7 +85,7 @@ class _ModelUtilitiesMixin(object):
 
 class AtomicProceduresMixin(object):
     """A **mixin class** that adds utility functions to
-    :class:`~flask_sqlalchemy.SQLAlchemy` and the declarative base.
+    :class:`flask_sqlalchemy.SQLAlchemy` and the declarative base.
 
     For example::
 
@@ -70,16 +97,16 @@ class AtomicProceduresMixin(object):
 
       db = CustomSQLAlchemy()
 
-      # `AtomicProceduresMixin` method are available in `db`
+      # Now `AtomicProceduresMixin` method are available in `db`.
 
-    Note that `AtomicProceduresMixin` should always come before
-    :class:`~flask_sqlalchemy.SQLAlchemy`.
+    Note that when subclassing, `AtomicProceduresMixin` should always
+    come before :class:`flask_sqlalchemy.SQLAlchemy`.
 
     In addition to all `AtomicProceduresMixin` method being available
     in ``db``, the classmethods from
     :class:`~flask_signalbus.atomic._ModelUtilitiesMixin` will be
     available in the declarative base class (``db.Model``). This means
-    that they will also be available on every model instance.
+    that they will also be available in every model class.
 
     """
 
@@ -100,6 +127,8 @@ class AtomicProceduresMixin(object):
 
         Example::
 
+          db = CustomSQLAlchemy()
+
           @db.atomic
           def f():
               write_to_db('a message')
@@ -108,16 +137,20 @@ class AtomicProceduresMixin(object):
           assert f() == 'OK'
 
         This code defines the function ``f``, which is wrapped in an
-        atomic block. Wrapping a function in an atomic block gives two
-        guarantees:
+        atomic block. Wrapping a function in an atomic block gives
+        several guarantees:
 
         1. The database transaction will be automatically committed if
            the function returns normally, and automatically rolled
            back if the function raises unhandled exception.
 
-        2. If a transaction serialization error occurs during the
+        2. When the transaction is committed, all objects in
+           ``db.session`` will be expunged. This means that no lazy
+           loading will be performed on them.
+
+        3. If a transaction serialization error occurs during the
            execution of the function, the function will be
-           re-executed. (This may happen several times.)
+           re-executed. (It might be re-executed several times.)
 
         Atomic blocks can be nested, but in this case the outermost
         block takes full control of transaction's life-cycle, and
@@ -147,10 +180,12 @@ class AtomicProceduresMixin(object):
 
         return wrapper
 
-    def execute_atomic(self, _fn, *args, **kwargs):
+    def execute_atomic(self, func):
         """A decorator that executes a function in an atomic block (see :meth:`atomic`).
 
         Example::
+
+          db = CustomSQLAlchemy()
 
           @db.execute_atomic
           def result():
@@ -162,26 +197,21 @@ class AtomicProceduresMixin(object):
         This code defines *and executes* the function ``result`` in an
         atomic block. At the end, the name ``result`` holds the value
         returned from the function.
-
-        Note: :meth:`execute_atomic` can be called with more that one
-        argument. The extra arguments will be passed to the function
-        given as a first argument. Example::
-
-          result = execute_atomic(write_to_db, 'a message')
-
         """
 
-        return self.atomic(_fn)(*args, **kwargs)
+        return self.atomic(func)()
 
     @contextmanager
     def retry_on_integrity_error(self):
         """Re-raise :class:`~sqlalchemy.exc.IntegrityError` as `DBSerializationError`.
 
         This is mainly useful to handle race conditions in atomic
-        blocks. For example, even if prior to INSERT we verify that
-        there is no existing row with the given primary key, we still
-        may get an :class:`~sqlalchemy.exc.IntegrityError` if another
-        transaction have insterted it in the meantime. But if we do::
+        blocks. For example, even if prior to a database INSERT we
+        have verified that there is no existing row with the given
+        primary key, we still may get an
+        :class:`~sqlalchemy.exc.IntegrityError` if another transaction
+        inserted a row with this primary key in the meantime. But if
+        we do (within an atomic block)::
 
           with db.retry_on_integrity_error():
               db.session.add(instance)
@@ -189,11 +219,12 @@ class AtomicProceduresMixin(object):
         then if the before-mentioned race condition occurs,
         `DBSerializationError` will be raised instead of
         :class:`~sqlalchemy.exc.IntegrityError`, so that the
-        transaction will be retried (by the atomic block), and this
-        time our prior-to-INSERT check will correctly detect a primary
-        key collision.
+        transaction will be retried (by the atomic block), and the
+        second time our prior-to-INSERT check will correctly detect a
+        primary key collision.
 
-        Note: `retry_on_integrity_error` triggers a session flush.
+        Note: :meth:`retry_on_integrity_error` triggers a session
+        flush.
 
         """
 

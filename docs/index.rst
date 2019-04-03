@@ -148,6 +148,14 @@ message can be sent more than once. Keep that in mind while designing
 your system.
 
 
+Transaction Management Utilities
+````````````````````````````````
+
+As a bonus, **Flask-SignalBus** offers some utilities for transaction
+management. See :class:`~flask_signalbus.AtomicProceduresMixin` for
+details.
+
+
 Contents:
 
 .. toctree::
