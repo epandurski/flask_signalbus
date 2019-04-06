@@ -98,7 +98,15 @@ def Signal(db, send_mock):
 
         def send_signalbus_message(self):
             properties = getattr(self, 'properties', [])
-            send_mock(self.id, self.name, self.value, {p.name: p.value for p in properties})
+            assert hasattr(Signal, '__marshmallow__')
+            dump = Signal.__marshmallow_schema__.dump(self)
+            send_mock(
+                self.id,
+                self.name,
+                self.value,
+                {p.name: p.value for p in properties},
+                dump.data if hasattr(dump, 'data') else dump,
+            )
             if self.name == 'error':
                 raise ValueError(self.value)
 
