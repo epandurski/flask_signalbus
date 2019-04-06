@@ -99,7 +99,7 @@ def test_retry_on_integrity_error(atomic_db, AtomicModel):
     assert objects[0].value == '2'
 
 
-@pytest.mark.skip('too slow')
+# @pytest.mark.skip('too slow')
 def test_retry_on_integrity_error_slow(atomic_db, AtomicModel):
     db = atomic_db
     call_list = []
