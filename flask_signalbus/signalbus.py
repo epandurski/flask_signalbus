@@ -96,7 +96,7 @@ class SignalBus(object):
             if db.app is None:
                 raise RuntimeError(
                     'No application found. The SQLAlchemy instance passed to'
-                    ' SignalBus should be constructed with an application.'
+                    ' SignalBus() should be constructed with an application.'
                 )
             self._init_app(db.app)
 
