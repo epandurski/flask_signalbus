@@ -100,13 +100,17 @@ class AtomicProceduresMixin(object):
       # Now `AtomicProceduresMixin` method are available in `db`.
 
     Note that when subclassing, `AtomicProceduresMixin` should always
-    come before :class:`flask_sqlalchemy.SQLAlchemy`.
+    come before :class:`flask_sqlalchemy.SQLAlchemy`. Adding
+    `AtomicProceduresMixin` has several useful results:
 
-    In addition to all `AtomicProceduresMixin` method being available
-    in ``db``, the classmethods from
-    :class:`~flask_signalbus.atomic._ModelUtilitiesMixin` will be
-    available in the declarative base class (``db.Model``). This means
-    that they will also be available in every model class.
+    1. `AtomicProceduresMixin` method will be available in ``db``.
+
+    2. The classmethods from
+       :class:`~flask_signalbus.atomic._ModelUtilitiesMixin` will be
+       available in the declarative base class (``db.Model``), and
+       therefore in every model class.
+
+    3. Databese isolation level will be set to ``REPEATABLE_READ``.
 
     """
 

@@ -25,18 +25,39 @@ subclass of ``db.Model``), which however has a
       signalbus_autoflush = True
 
       def send_signalbus_message(self):
-          """Send the message to the enterprise message bus."""
+          # Send the message to the message bus.
+          print(MySignal.__marshmallow_schema__.dumps(self))
 
-- The signal model class may have a ``signalbus_autoflush`` boolean
-  attribute defined, which determines if signals of that type will be
-  automatically sent over the message bus after each transaction
-  commit. If not defined, it defaults to `True`.
+- The signal model class **may** have a ``signalbus_autoflush``
+  boolean attribute defined, which determines if signals of that type
+  will be automatically sent over the message bus after each
+  transaction commit. If not defined, it defaults to `True`.
 
-- The signal model class may have a ``signalbus_burst_count`` integer
-  attribute defined, which determines how many individual signals will
-  be deleted at once, as a part of one database transaction. This
-  might be useful in some cases, to improve performace. If not
-  defined, it defaults to ``1``.
+- The signal model class **may** have a ``signalbus_burst_count``
+  integer attribute defined, which determines how many individual
+  signals will be deleted at once, as a part of one database
+  transaction. This might be useful in some cases, to improve
+  performace. If not defined, it defaults to ``1``.
+
+- *Flask-SignalBus* will automatically (after
+  :func:`sqlalchemy.orm.configure_mappers` is invoked) add a bunch of
+  attributes on each signal model class.  These are useful when
+  serializing instances, before sending them over the network:
+
+  ``__marshmallow__``
+    An auto-generated `Marshmallow`_ schema class for serializing and
+    deserializing instances of the model class. It is a subclass of
+    `marshmallow.Schema`. This attribute will be automatically added
+    to all model classes (signal or non-signal). If the
+    ``__marshmallow__`` attribute happens to be defined in the model
+    class, it **will not** be overridden.
+
+  ``__marshmallow_schema__``
+    An instance of the class referred by the ``__marshmallow__``
+    attribute.
+
+
+.. _Marshmallow: http://marshmallow.readthedocs.io/en/latest/
 
 
 Classes

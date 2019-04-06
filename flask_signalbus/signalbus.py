@@ -6,8 +6,10 @@ messages (signals) over a message bus.
 import time
 import logging
 from sqlalchemy import event, inspect, and_
+from sqlalchemy.orm import mapper
 from sqlalchemy.exc import DBAPIError
 from flask_signalbus.utils import retry_on_deadlock, get_db_error_code, DEADLOCK_ERROR_CODES
+from marshmallow_sqlalchemy import ModelSchema, ModelConversionError
 
 __all__ = ['SignalBus', 'SignalBusMixin']
 
@@ -89,6 +91,7 @@ class SignalBus(object):
         event.listen(self.db.session, 'transient_to_pending', self._transient_to_pending_handler)
         event.listen(self.db.session, 'after_commit', self._safe_after_commit_handler)
         event.listen(self.db.session, 'after_rollback', self._after_rollback_handler)
+        event.listen(mapper, 'after_configured', _setup_schema(db.Model, self.db.session))
         if init_app:
             if db.app is None:
                 raise RuntimeError(
@@ -264,3 +267,37 @@ class SignalBus(object):
         self.signal_session.commit()
         self.signal_session.expire_all()
         return sent_count
+
+
+def _setup_schema(Base, session):
+    """Create a function which adds `__marshmallow__` attribute to all signal models."""
+
+    def create_schema_class(m):
+        if hasattr(m, 'send_signalbus_message'):
+            # Signal models should not use the SQLAlchemy session.
+            class Meta(object):
+                model = m
+        else:
+            class Meta(object):
+                model = m
+                sqla_session = session
+
+        schema_class_name = '%sSchema' % m.__name__
+        return type(schema_class_name, (ModelSchema,), {'Meta': Meta})
+
+    def setup_schema_fn():
+        for model in Base._decl_class_registry.values():
+            if hasattr(model, '__tablename__'):
+                if model.__name__.endswith("Schema"):
+                    raise ModelConversionError(
+                        'Unexpected model name: "{}". '
+                        'For safety, _setup_schema() can not be used when a '
+                        'model class ends with "Schema".'.format(model.__name__)
+                    )
+                schema_class = getattr(model, '__marshmallow__', None)
+                if schema_class is None:
+                    schema_class = model.__marshmallow__ = create_schema_class(model)
+                if hasattr(model, 'send_signalbus_message'):
+                    setattr(model, '__marshmallow_schema__', schema_class())
+
+    return setup_schema_fn

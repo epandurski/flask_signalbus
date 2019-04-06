@@ -41,9 +41,11 @@ setup(
     setup_requires=pytest_runner,
     install_requires=[
         'Flask-SQLAlchemy>=1.0',
+        'marshmallow-sqlalchemy>=0.16.1',
     ],
     tests_require=[
         'pytest',
+        'pytest-cov',
         'mock',
     ],
     classifiers=[

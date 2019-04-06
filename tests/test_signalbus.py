@@ -68,7 +68,13 @@ def test_send_signal_success(db, signalbus, send_mock, Signal):
     sig_id = sig.id
     send_mock.assert_not_called()
     db.session.commit()
-    send_mock.assert_called_once_with(sig_id, 'signal', '1', {})
+    send_mock.assert_called_once_with(
+        sig_id,
+        'signal',
+        '1',
+        {},
+        {'id': sig_id, 'name': 'signal', 'value': '1'},
+    )
     assert Signal.query.count() == 0
 
 
@@ -114,6 +120,7 @@ def test_send_nonsignal_model(db, signalbus, send_mock, NonSignal):
     db.session.flush()
     db.session.commit()
     assert NonSignal.query.count() == 1
+    assert hasattr(NonSignal, '__marshmallow__')
 
 
 def test_signal_with_props_success(db, send_mock, Signal, SignalProperty):
@@ -132,7 +139,7 @@ def test_signal_with_props_success(db, send_mock, Signal, SignalProperty):
     send_mock.assert_called_once()
     args, kwargs = send_mock.call_args
     assert kwargs == {}
-    assert len(args) == 4
+    assert len(args) == 5
     assert args[:3] == (sig_id, 'signal', '1')
     props = args[3]
     assert type(props) is dict
@@ -141,6 +148,8 @@ def test_signal_with_props_success(db, send_mock, Signal, SignalProperty):
     assert props['last_name'] == 'Doe'
     assert Signal.query.count() == 0
     assert SignalProperty.query.count() == 0
+    assert args[4]['name'] == 'signal'
+    assert args[4]['value'] == '1'
 
 
 def test_signal_with_props_is_efficient(app, db, Signal, SignalProperty):
