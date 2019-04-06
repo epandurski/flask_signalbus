@@ -1,6 +1,14 @@
 Changelog
 =========
 
+Version 0.4.0
+-------------
+
+- Use `marshmallow_sqlalchemy` for signal serialization
+- Auto define __marshmallow__ attribute on all models
+- Auto define __marshmallow_schema__ attribute on signal models
+
+
 Version 0.3.7
 -------------
 
