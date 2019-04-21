@@ -1,6 +1,12 @@
 Changelog
 =========
 
+Version 0.4.1
+-------------
+
+- In CLI commands, log errors instead of printing them
+
+
 Version 0.4.0
 -------------
 
