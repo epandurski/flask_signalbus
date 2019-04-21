@@ -1,3 +1,5 @@
+import sys
+import logging
 import click
 from flask.cli import with_appcontext
 from flask import current_app
@@ -38,14 +40,19 @@ def flush(signal_names, exclude, wait):
     for name in wrong_signal_names:
         click.echo('Warning: A signal with name "{}" does not exist.'.format(name))
     models_to_flush = [m for m in models_to_flush if m.__name__ not in exclude]
-    if wait is not None:
-        signal_count = signalbus.flush(models_to_flush, wait=max(0.0, wait))
-    else:
-        signal_count = signalbus.flush(models_to_flush)
+    logger = logging.getLogger(__name__)
+    try:
+        if wait is not None:
+            signal_count = signalbus.flush(models_to_flush, wait=max(0.0, wait))
+        else:
+            signal_count = signalbus.flush(models_to_flush)
+    except Exception:
+        logger.exception('Caught error while sending pending signals.')
+        sys.exit(1)
     if signal_count == 1:
-        click.echo('{} signal has been successfully processed.'.format(signal_count))
+        logger.warning('%i signal has been successfully processed.', signal_count)
     elif signal_count > 1:
-        click.echo('{} signals have been successfully processed.'.format(signal_count))
+        logger.warning('%i signals have been successfully processed.', signal_count)
 
 
 @signalbus.command()
@@ -63,10 +70,11 @@ def flushmany():
 
     signalbus = current_app.extensions['signalbus']
     signal_count = signalbus.flushmany()
+    logger = logging.getLogger(__name__)
     if signal_count == 1:
-        click.echo('{} signal has been successfully processed.'.format(signal_count))
+        logger.warning('%i signal has been successfully processed.', signal_count)
     elif signal_count > 1:
-        click.echo('{} signals have been successfully processed.'.format(signal_count))
+        logger.warning('%i signals have been successfully processed.', signal_count)
 
 
 @signalbus.command()
