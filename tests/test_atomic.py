@@ -1,5 +1,6 @@
 import pytest
 from mock import Mock
+from sqlalchemy.orm import defer
 from flask_signalbus.utils import DBSerializationError
 
 
@@ -136,6 +137,21 @@ def test_get_instance(atomic_db, AtomicModel):
     assert AtomicModel.get_instance(o) in db.session
 
 
+def test_get_instance_with_options(atomic_db, AtomicModel):
+    db = atomic_db
+    o = AtomicModel(id=1, name='test', value='1')
+    assert o not in db.session
+    assert AtomicModel.get_instance(o, defer('value')) is None
+    db.session.add(o)
+    assert AtomicModel.get_instance(o, defer('value')) is o
+    assert o in db.session
+    pk = o.id
+    db.session.commit()
+    assert AtomicModel.get_instance(pk, defer('value')) in db.session
+    assert AtomicModel.get_instance((pk,), defer('value')) in db.session
+    assert AtomicModel.get_instance(o, defer('value')) in db.session
+
+
 def test_lock_instance(atomic_db, AtomicModel):
     db = atomic_db
     o = AtomicModel(id=1, name='test', value='1')
@@ -149,6 +165,7 @@ def test_lock_instance(atomic_db, AtomicModel):
     assert AtomicModel.lock_instance(pk) in db.session
     assert AtomicModel.lock_instance((pk,)) in db.session
     assert AtomicModel.lock_instance(o) in db.session
+    assert AtomicModel.lock_instance(o, read=True) in db.session
 
 
 def test_get_pk_values(atomic_db, AtomicModel):

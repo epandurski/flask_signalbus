@@ -18,12 +18,14 @@ _ATOMIC_FLAG_SESSION_INFO_KEY = 'flask_signalbus__atomic_flag'
 
 class _ModelUtilitiesMixin(object):
     @classmethod
-    def get_instance(cls, instance_or_pk):
+    def get_instance(cls, instance_or_pk, *options):
         """Return a model instance in ``db.session``.
 
         :param instance_or_pk: An instance of this model class, or a
           primary key. A composite primary key can be passed as a
           tuple.
+        :param options: Arguments to be passed to
+          :meth:`~sqlalchemy.orm.query.Query.options`.
 
         Example::
 
@@ -46,18 +48,19 @@ class _ModelUtilitiesMixin(object):
             if instance_or_pk in cls._flask_signalbus_sa.session:
                 return instance_or_pk
             instance_or_pk = inspect(cls).primary_key_from_instance(instance_or_pk)
-        return cls.query.get(instance_or_pk)
+        return cls.query.options(*options).get(instance_or_pk)
 
     @classmethod
-    def lock_instance(cls, instance_or_pk, read=False):
+    def lock_instance(cls, instance_or_pk, *options, **kw):
         """Return a locked model instance in ``db.session``.
 
         :param instance_or_pk: An instance of this model class, or a
           primary key. A composite primary key can be passed as a
           tuple.
-
-        :param read: If `True`, a reading lock is obtained instead of
-          a writing lock.
+        :param options: Arguments to be passed to
+          :meth:`~sqlalchemy.orm.query.Query.options`.
+        :param kw: Arguments to be passed to
+          :meth:`~sqlalchemy.orm.query.Query.with_for_update`.
 
         """
 
@@ -65,7 +68,7 @@ class _ModelUtilitiesMixin(object):
         pk_attrs = [mapper.get_property_by_column(c).class_attribute for c in mapper.primary_key]
         pk_values = cls.get_pk_values(instance_or_pk)
         clause = and_(*[attr == value for attr, value in zip(pk_attrs, pk_values)])
-        return cls.query.filter(clause).with_for_update(read=read).one_or_none()
+        return cls.query.options(*options).filter(clause).with_for_update(**kw).one_or_none()
 
     @classmethod
     def get_pk_values(cls, instance_or_pk):

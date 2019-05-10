@@ -1,6 +1,13 @@
 Changelog
 =========
 
+Version 0.4.2
+-------------
+
+- Added `*options` parameter to `_ModelUtilitiesMixin.get_instance()`
+  and `_ModelUtilitiesMixin.lock_instance()`.
+
+
 Version 0.4.1
 -------------
 
