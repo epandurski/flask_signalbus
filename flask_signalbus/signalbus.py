@@ -5,7 +5,7 @@ messages (signals) over a message bus.
 
 import time
 import logging
-from sqlalchemy import event, inspect, and_
+from sqlalchemy import event, inspect, and_, or_
 from sqlalchemy.orm import mapper
 from sqlalchemy.exc import DBAPIError
 from flask_signalbus.utils import retry_on_deadlock, get_db_error_code, DEADLOCK_ERROR_CODES
@@ -16,6 +16,13 @@ __all__ = ['SignalBus', 'SignalBusMixin']
 
 _SIGNALS_TO_FLUSH_SESSION_INFO_KEY = 'flask_signalbus__signals_to_flush'
 _FLUSHMANY_LIMIT = 50000
+
+
+def _chunks(l, n):
+    """Yield successive n-sized chunks from l."""
+
+    for i in range(0, len(l), n):
+        yield l[i:i + n]
 
 
 def _raise_error_if_not_signal_model(model):
@@ -148,13 +155,14 @@ class SignalBus(object):
         try:
             for model in models_to_flush:
                 _raise_error_if_not_signal_model(model)
-                pks_to_flush[model] = self._list_model_pks(model, ordered=False)
+                pks_to_flush[model] = self._list_signal_pks(model)
             self.signal_session.rollback()
             time.sleep(wait)
-            return sum(
-                self._flush_signals_with_retry(model, pk_values_set=set(pks_to_flush[model]))
-                for model in models_to_flush
-            )
+            sent_count = 0
+            for model in models_to_flush:
+                self.logger.info('Flushing %s.', model.__name__)
+                sent_count += self._flush_signals_with_retry(model, pk_values_set=set(pks_to_flush[model]))
+            return sent_count
         finally:
             self.signal_session.remove()
 
@@ -225,17 +233,13 @@ class SignalBus(object):
                 self.logger.exception('Caught database error during autoflush.')
             self.signal_session.rollback()
 
-    def _lock_model_instance(self, model, pk_values):
+    def _compose_signal_query(self, model, pk_only=False, ordered=False, max_count=None):
         m = inspect(model)
         pk_attrs = [m.get_property_by_column(c).class_attribute for c in m.primary_key]
-        clause = and_(*[attr == value for attr, value in zip(pk_attrs, pk_values)])
-        query = self.signal_session.query(model).filter(clause).with_for_update()
-        return query.one_or_none()
-
-    def _list_model_pks(self, model, max_count=None, ordered=True):
-        m = inspect(model)
-        pk_attrs = [m.get_property_by_column(c).class_attribute for c in m.primary_key]
-        query = self.signal_session.query(*pk_attrs)
+        if pk_only:
+            query = self.signal_session.query(*pk_attrs)
+        else:
+            query = self.signal_session.query(model)
         if ordered:
             order_by_columns = getattr(model, 'signalbus_order_by', ())
             if order_by_columns:
@@ -244,6 +248,18 @@ class SignalBus(object):
                 query = query.order_by(*pk_attrs)
         if max_count is not None:
             query = query.limit(max_count)
+        return query, pk_attrs
+
+    def _lock_signal_instances(self, model, pk_values_list):
+        query, pk_attrs = self._compose_signal_query(model, ordered=len(pk_values_list) > 1)
+        clause = or_(*[
+            and_(*[attr == value for attr, value in zip(pk_attrs, pk_values)])
+            for pk_values in pk_values_list
+        ])
+        return query.filter(clause).with_for_update().all()
+
+    def _list_signal_pks(self, model, ordered=False, max_count=None):
+        query, _ = self._compose_signal_query(model, pk_only=True, ordered=ordered, max_count=max_count)
         return query.all()
 
     def _flushmany_signals(self, model):
@@ -257,22 +273,18 @@ class SignalBus(object):
         return sent_count
 
     def _flush_signals(self, model, pk_values_set=None, max_count=None):
-        if max_count is None:
-            self.logger.info('Flushing %s.', model.__name__)
-        signal_pks = self._list_model_pks(model, max_count)
-        burst_count = int(getattr(model, 'signalbus_burst_count', 1))
+        signal_pks = self._list_signal_pks(model, ordered=True, max_count=max_count)
+        if pk_values_set is not None:
+            signal_pks = [pk for pk in signal_pks if pk in pk_values_set]
         sent_count = 0
+        burst_count = int(getattr(model, 'signalbus_burst_count', 1))
         self.signal_session.commit()
-        for pk_values in signal_pks:
-            if pk_values_set is None or pk_values in pk_values_set:
-                signal = self._lock_model_instance(model, pk_values)
-                if signal:
-                    signal.send_signalbus_message()
-                    self.signal_session.delete(signal)
-                    sent_count += 1
-                    if sent_count % burst_count == 0:
-                        self.signal_session.commit()
-        self.signal_session.commit()
+        for pk_values_list in _chunks(signal_pks, burst_count):
+            for signal in self._lock_signal_instances(model, pk_values_list):
+                signal.send_signalbus_message()
+                self.signal_session.delete(signal)
+                sent_count += 1
+            self.signal_session.commit()
         self.signal_session.expire_all()
         return sent_count
 
