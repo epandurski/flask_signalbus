@@ -110,6 +110,8 @@ def Signal(db, send_mock):
             if self.name == 'error':
                 raise ValueError(self.value)
 
+        signalbus_order_by = (id, name)
+
     db.create_all()
     yield Signal
     db.drop_all()

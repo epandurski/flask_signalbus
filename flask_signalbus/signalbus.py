@@ -148,7 +148,7 @@ class SignalBus(object):
         try:
             for model in models_to_flush:
                 _raise_error_if_not_signal_model(model)
-                pks_to_flush[model] = self._list_model_pks(model)
+                pks_to_flush[model] = self._list_model_pks(model, ordered=False)
             self.signal_session.rollback()
             time.sleep(wait)
             return sum(
@@ -232,10 +232,16 @@ class SignalBus(object):
         query = self.signal_session.query(model).filter(clause).with_for_update()
         return query.one_or_none()
 
-    def _list_model_pks(self, model, max_count=None):
+    def _list_model_pks(self, model, max_count=None, ordered=True):
         m = inspect(model)
         pk_attrs = [m.get_property_by_column(c).class_attribute for c in m.primary_key]
         query = self.signal_session.query(*pk_attrs)
+        if ordered:
+            order_by_columns = getattr(model, 'signalbus_order_by', ())
+            if order_by_columns:
+                query = query.order_by(*order_by_columns)
+            else:
+                query = query.order_by(*pk_attrs)
         if max_count is not None:
             query = query.limit(max_count)
         return query.all()
