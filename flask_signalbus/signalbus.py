@@ -15,7 +15,7 @@ __all__ = ['SignalBus', 'SignalBusMixin']
 
 
 _SIGNALS_TO_FLUSH_SESSION_INFO_KEY = 'flask_signalbus__signals_to_flush'
-_FLUSHMANY_LIMIT = 1000
+_FLUSHMANY_LIMIT = 50000
 
 
 def _raise_error_if_not_signal_model(model):
@@ -148,9 +148,7 @@ class SignalBus(object):
         try:
             for model in models_to_flush:
                 _raise_error_if_not_signal_model(model)
-                m = inspect(model)
-                pk_attrs = [m.get_property_by_column(c).class_attribute for c in m.primary_key]
-                pks_to_flush[model] = self.signal_session.query(*pk_attrs).all()
+                pks_to_flush[model] = self._list_model_pks(model)
             self.signal_session.rollback()
             time.sleep(wait)
             return sum(
@@ -166,8 +164,9 @@ class SignalBus(object):
         This method assumes that the number of pending signals might
         be huge, so that they might not fit into memory. However,
         `SignalBus.flushmany` is not very smart in handling concurrent
-        senders. It is mostly useful when recovering from long periods
-        of disconnectedness from the message bus.
+        senders. It is useful when recovering from long periods of
+        disconnectedness from the message bus, or when auto-flushing
+        is disabled.
 
         :return: The total number of signals that have been sent
 
@@ -226,13 +225,23 @@ class SignalBus(object):
                 self.logger.exception('Caught database error during autoflush.')
             self.signal_session.rollback()
 
-    def _get_lock_for_update(self, pk_attrs, pk_values):
+    def _lock_model_instance(self, model, pk_values):
+        m = inspect(model)
+        pk_attrs = [m.get_property_by_column(c).class_attribute for c in m.primary_key]
         clause = and_(*[attr == value for attr, value in zip(pk_attrs, pk_values)])
-        query = self.signal_session.query(*pk_attrs).filter(clause).with_for_update()
-        return query.one_or_none() is not None
+        query = self.signal_session.query(model).filter(clause).with_for_update()
+        return query.one_or_none()
+
+    def _list_model_pks(self, model, max_count=None):
+        m = inspect(model)
+        pk_attrs = [m.get_property_by_column(c).class_attribute for c in m.primary_key]
+        query = self.signal_session.query(*pk_attrs)
+        if max_count is not None:
+            query = query.limit(max_count)
+        return query.all()
 
     def _flushmany_signals(self, model):
-        self.logger.warning('Flushing %s in "flushmany" mode.', model.__name__)
+        self.logger.info('Flushing %s in "flushmany" mode.', model.__name__)
         sent_count = 0
         while True:
             n = self._flush_signals(model, max_count=_FLUSHMANY_LIMIT)
@@ -242,28 +251,21 @@ class SignalBus(object):
         return sent_count
 
     def _flush_signals(self, model, pk_values_set=None, max_count=None):
-        query = self.signal_session.query(model)
         if max_count is None:
             self.logger.info('Flushing %s.', model.__name__)
-        else:
-            query = query.limit(max_count)
-        signals = query.all()
-        self.signal_session.commit()
+        signal_pks = self._list_model_pks(model, max_count)
         burst_count = int(getattr(model, 'signalbus_burst_count', 1))
         sent_count = 0
-        m = inspect(model)
-        pk_attrs = [m.get_property_by_column(c).class_attribute for c in m.primary_key]
-        for signal in signals:
-            pk_values = m.primary_key_from_instance(signal)
+        self.signal_session.commit()
+        for pk_values in signal_pks:
             if pk_values_set is None or pk_values in pk_values_set:
-                if not self._get_lock_for_update(pk_attrs, pk_values):
-                    # The row has been deleted by a concurrent sender.
-                    continue
-                signal.send_signalbus_message()
-                self.signal_session.delete(signal)
-                sent_count += 1
-                if sent_count % burst_count == 0:
-                    self.signal_session.commit()
+                signal = self._lock_model_instance(model, pk_values)
+                if signal:
+                    signal.send_signalbus_message()
+                    self.signal_session.delete(signal)
+                    sent_count += 1
+                    if sent_count % burst_count == 0:
+                        self.signal_session.commit()
         self.signal_session.commit()
         self.signal_session.expire_all()
         return sent_count
