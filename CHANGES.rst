@@ -1,6 +1,13 @@
 Changelog
 =========
 
+Version 0.4.3
+-------------
+
+- Improved performace.
+- Added support for `signalbus_order_by` attribute on signals.
+
+
 Version 0.4.2
 -------------
 
