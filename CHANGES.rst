@@ -1,6 +1,13 @@
 Changelog
 =========
 
+Version 0.4.4
+-------------
+
+- Add `models` parameter to flushmany().
+- Do not order by primary key if `signalbus_order_by` is not set.
+
+
 Version 0.4.3
 -------------
 
