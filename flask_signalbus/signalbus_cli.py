@@ -6,6 +6,30 @@ from flask import current_app
 from . import SignalBus
 
 
+def _get_models_to_flush(signalbus, signal_names, exclude):
+    signal_names = set(signal_names)
+    exclude = set(exclude)
+    models_to_flush = signalbus.get_signal_models()
+    if signal_names and exclude:
+        click.echo('Warning: Specified both SIGNAL_NAMES and exclude option.')
+    if signal_names:
+        wrong_signal_names = signal_names - {m.__name__ for m in models_to_flush}
+        models_to_flush = [m for m in models_to_flush if m.__name__ in signal_names]
+    else:
+        wrong_signal_names = exclude - {m.__name__ for m in models_to_flush}
+    for name in wrong_signal_names:
+        click.echo('Warning: A signal with name "{}" does not exist.'.format(name))
+    return [m for m in models_to_flush if m.__name__ not in exclude]
+
+
+def _report_signal_count(signal_count):
+    logger = logging.getLogger(__name__)
+    if signal_count == 1:
+        logger.warning('%i signal has been successfully processed.', signal_count)
+    elif signal_count > 1:
+        logger.warning('%i signals have been successfully processed.', signal_count)
+
+
 @click.group()
 def signalbus():
     """Perform SignalBus operations."""
@@ -27,54 +51,41 @@ def flush(signal_names, exclude, wait):
     """
 
     signalbus = current_app.extensions['signalbus']
-    signal_names = set(signal_names)
-    exclude = set(exclude)
-    models_to_flush = signalbus.get_signal_models()
-    if signal_names and exclude:
-        click.echo('Warning: Specified both SIGNAL_NAMES and exclude option.')
-    if signal_names:
-        wrong_signal_names = signal_names - {m.__name__ for m in models_to_flush}
-        models_to_flush = [m for m in models_to_flush if m.__name__ in signal_names]
-    else:
-        wrong_signal_names = exclude - {m.__name__ for m in models_to_flush}
-    for name in wrong_signal_names:
-        click.echo('Warning: A signal with name "{}" does not exist.'.format(name))
-    models_to_flush = [m for m in models_to_flush if m.__name__ not in exclude]
-    logger = logging.getLogger(__name__)
+    models_to_flush = _get_models_to_flush(signalbus, signal_names, exclude)
     try:
         if wait is not None:
             signal_count = signalbus.flush(models_to_flush, wait=max(0.0, wait))
         else:
             signal_count = signalbus.flush(models_to_flush)
     except Exception:
+        logger = logging.getLogger(__name__)
         logger.exception('Caught error while sending pending signals.')
         sys.exit(1)
-    if signal_count == 1:
-        logger.warning('%i signal has been successfully processed.', signal_count)
-    elif signal_count > 1:
-        logger.warning('%i signals have been successfully processed.', signal_count)
+    _report_signal_count(signal_count)
 
 
 @signalbus.command()
 @with_appcontext
-def flushmany():
+@click.option('-e', '--exclude', multiple=True, help='Do not flush signals with the specified name.')
+@click.argument('signal_names', nargs=-1)
+def flushmany(signal_names, exclude):
     """Send a potentially huge number of pending signals over the message bus.
 
-    This command assumes that the number of pending signals might be
+    If a list of SIGNAL_NAMES is specified, flushes only those
+    signals. If no SIGNAL_NAMES are specified, flushes all signals.
+
+    This method assumes that the number of pending signals might be
     huge, so that they might not fit into memory. However, it is not
-    very smart in handling concurrent senders. It is mostly useful
-    when recovering from long periods of disconnectedness from the
-    message bus.
+    very smart in handling concurrent senders. It is useful when
+    recovering from long periods of disconnectedness from the message
+    bus, or when auto-flushing is disabled.
 
     """
 
     signalbus = current_app.extensions['signalbus']
-    signal_count = signalbus.flushmany()
-    logger = logging.getLogger(__name__)
-    if signal_count == 1:
-        logger.warning('%i signal has been successfully processed.', signal_count)
-    elif signal_count > 1:
-        logger.warning('%i signals have been successfully processed.', signal_count)
+    models_to_flush = _get_models_to_flush(signalbus, signal_names, exclude)
+    signal_count = signalbus.flushmany(models_to_flush)
+    _report_signal_count(signal_count)
 
 
 @signalbus.command()

@@ -166,7 +166,7 @@ class SignalBus(object):
         finally:
             self.signal_session.remove()
 
-    def flushmany(self):
+    def flushmany(self, models=None):
         """Send a potentially huge number of pending signals over the message bus.
 
         This method assumes that the number of pending signals might
@@ -176,13 +176,19 @@ class SignalBus(object):
         disconnectedness from the message bus, or when auto-flushing
         is disabled.
 
+        :param models: If passed, flushes only signals of the specified types.
+        :type models: list(`signal-model`) or `None`
         :return: The total number of signals that have been sent
 
         """
 
-        models_to_flush = self.get_signal_models()
+        models_to_flush = self.get_signal_models() if models is None else models
         try:
-            return sum(self._flushmany_signals(model) for model in models_to_flush)
+            sent_count = 0
+            for model in models_to_flush:
+                _raise_error_if_not_signal_model(model)
+                sent_count += self._flushmany_signals(model)
+            return sent_count
         finally:
             self.signal_session.remove()
 
