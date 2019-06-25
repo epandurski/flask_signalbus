@@ -23,7 +23,7 @@ subclass of ``db.Model``), which however has a
       id = db.Column(db.Integer, primary_key=True, autoincrement=True)
       message_text = db.Column(db.Text, nullable=False)
       signalbus_autoflush = True
-      signalbus_order_by = (id, message_text)
+      signalbus_order_by = (id, db.desc(message_text))
 
       def send_signalbus_message(self):
           # Send the message to the message bus.
@@ -41,9 +41,9 @@ subclass of ``db.Model``), which however has a
   performace. If not defined, it defaults to ``1``.
 
 - The signal model class **may** have a ``signalbus_order_by`` tuple
-  attribute defined, which determines how signals will be ordered when
-  sending them over the network. If not defined, signals will be
-  ordered by their primary key.
+  attribute defined, which determines the order in which signals will
+  be send over the network by ``flush`` and ``flushmany`` CLI
+  commands. If not defined, signals will not be ordered.
 
 - *Flask-SignalBus* will automatically (after
   :func:`sqlalchemy.orm.configure_mappers` is invoked) add a bunch of

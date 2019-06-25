@@ -244,8 +244,6 @@ class SignalBus(object):
             order_by_columns = getattr(model, 'signalbus_order_by', ())
             if order_by_columns:
                 query = query.order_by(*order_by_columns)
-            else:
-                query = query.order_by(*pk_attrs)
         if max_count is not None:
             query = query.limit(max_count)
         return query, pk_attrs
