@@ -48,6 +48,11 @@ def flush(signal_names, exclude, wait):
     If a list of SIGNAL_NAMES is specified, flushes only those
     signals. If no SIGNAL_NAMES are specified, flushes all signals.
 
+    This command assumes that all pending signals can fit into
+    memory. Normally, to use "flush" auto-flushing should be enabled
+    for the given signal type. Having multiple processes that run this
+    method in parallel is generally not a good idea.
+
     """
 
     signalbus = current_app.extensions['signalbus']
@@ -74,11 +79,17 @@ def flushmany(signal_names, exclude):
     If a list of SIGNAL_NAMES is specified, flushes only those
     signals. If no SIGNAL_NAMES are specified, flushes all signals.
 
-    This method assumes that the number of pending signals might be
-    huge, so that they might not fit into memory. However, it is not
-    very smart in handling concurrent senders. It is useful when
-    recovering from long periods of disconnectedness from the message
-    bus, or when auto-flushing is disabled.
+    This command assumes that the number of pending signals might be
+    huge, so that they might not fit into memory. Using "flushmany"
+    when auto-flushing is enabled for the given signal type is not
+    recommended, because it may result in multiple delivery of
+    messages.
+
+    "flushmany" can be very useful when recovering from long periods
+    of disconnectedness from the message bus, or when auto-flushing is
+    disabled. If your database supports "FOR UPDATE SKIP LOCKED",
+    multiple processes will be able run this command in parallel,
+    without stepping on each others' toes.
 
     """
 
