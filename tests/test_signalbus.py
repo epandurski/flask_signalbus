@@ -63,7 +63,7 @@ def test_flush_signal_send_many_success(db, signalbus, send_mock, SignalSendMany
     sig1_id = sig1.id
     sig2_id = sig2.id
     db.session.commit()
-    sent_count = signalbus.flush([SignalSendMany], wait=0.0)
+    sent_count = signalbus.flushordered([SignalSendMany])
     assert sent_count == 2
     assert send_mock.call_count == 2
     assert send_mock.call_args_list == [call(sig2_id), call(sig1_id)]

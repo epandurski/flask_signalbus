@@ -58,8 +58,8 @@ subclass of ``db.Model``), which however has a
 
 - The signal model class **may** have a ``signalbus_order_by`` tuple
   attribute defined, which determines the order in which signals will
-  be send over the network by ``flush`` and ``flushmany`` CLI
-  commands. If not defined, signals will not be ordered.
+  be send over the network by the ``flushordered`` CLI command. If not
+  defined, signals will not be ordered.
 
 - *Flask-SignalBus* will automatically (after
   :func:`sqlalchemy.orm.configure_mappers` is invoked) add a bunch of

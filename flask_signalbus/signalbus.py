@@ -95,6 +95,7 @@ class SignalBus(object):
         self._autoflush = True
         retry = retry_on_deadlock(self.signal_session, retries=10, max_wait=1.0)
         self._flush_signals_with_retry = retry(self._flush_signals)
+        self._flushmany_signals_with_retry = retry(self._flushmany_signals)
         event.listen(self.db.session, 'transient_to_pending', self._transient_to_pending_handler)
         event.listen(self.db.session, 'after_commit', self._safe_after_commit_handler)
         event.listen(self.db.session, 'after_rollback', self._after_rollback_handler)
@@ -141,11 +142,17 @@ class SignalBus(object):
     def flush(self, models=None, wait=3.0):
         """Send all pending signals over the message bus.
 
+        This method assumes that all pending signals can fit into
+        memory. Normally, to use `SignalBus.flush` auto-flushing
+        should be enabled for the given signal type. Having multiple
+        processes that run this method in parallel is generally *not a
+        good idea*.
+
         :param models: If passed, flushes only signals of the specified types.
         :type models: list(`signal-model`) or `None`
         :param float wait: The number of seconds the method will wait
             after obtaining the list of pending signals, to allow
-            concurrent senders to complete
+            auto-flushing senders to complete
         :return: The total number of signals that have been sent
 
         """
@@ -170,11 +177,16 @@ class SignalBus(object):
         """Send a potentially huge number of pending signals over the message bus.
 
         This method assumes that the number of pending signals might
-        be huge, so that they might not fit into memory. However,
-        `SignalBus.flushmany` is not very smart in handling concurrent
-        senders. It is useful when recovering from long periods of
-        disconnectedness from the message bus, or when auto-flushing
-        is disabled.
+        be huge, so that they might not fit into memory. Using
+        `SignalBus.flushmany` when auto-flushing is enabled for the
+        given signal type is not recommended, because it may result in
+        multiple delivery of messages.
+
+        `SignalBus.flushmany` can be very useful when recovering from
+        long periods of disconnectedness from the message bus, or when
+        auto-flushing is disabled. If your database supports ``FOR
+        UPDATE SKIP LOCKED``, multiple processes will be able run this
+        method in parallel, without stepping on each others' toes.
 
         :param models: If passed, flushes only signals of the specified types.
         :type models: list(`signal-model`) or `None`
@@ -187,7 +199,22 @@ class SignalBus(object):
             sent_count = 0
             for model in models_to_flush:
                 _raise_error_if_not_signal_model(model)
-                sent_count += self._flushmany_signals(model)
+                sent_count += self._flushmany_signals_with_retry(model)
+            return sent_count
+        finally:
+            self.signal_session.remove()
+
+    def flushordered(self, models=None):
+        """TODO
+
+        """
+
+        models_to_flush = self.get_signal_models() if models is None else models
+        try:
+            sent_count = 0
+            for model in models_to_flush:
+                _raise_error_if_not_signal_model(model)
+                sent_count += self._flushordered_signals(model)
             return sent_count
         finally:
             self.signal_session.remove()
@@ -254,8 +281,8 @@ class SignalBus(object):
             query = query.limit(max_count)
         return query, pk_attrs
 
-    def _lock_signal_instances(self, model, pk_values_list):
-        query, pk_attrs = self._compose_signal_query(model, ordered=len(pk_values_list) > 1)
+    def _lock_signal_instances(self, model, pk_values_list, ordered=False):
+        query, pk_attrs = self._compose_signal_query(model, ordered=ordered)
         clause = or_(*[
             and_(*[attr == value for attr, value in zip(pk_attrs, pk_values)])
             for pk_values in pk_values_list
@@ -282,25 +309,40 @@ class SignalBus(object):
             self.signal_session.delete(instance)
         return n
 
-    def _flushmany_signals(self, model):
-        self.logger.info('Flushing %s in "flushmany" mode.', model.__name__)
+    def _flushordered_signals(self, model):
+        self.logger.info('Flushing %s in "flushordered" mode.', model.__name__)
         sent_count = 0
         while True:
-            n = self._flush_signals(model, max_count=_FLUSHMANY_LIMIT)
+            n = self._flush_signals(model, ordered=True, max_count=_FLUSHMANY_LIMIT)
             sent_count += n
             if n < _FLUSHMANY_LIMIT:
                 break
         return sent_count
 
-    def _flush_signals(self, model, pk_values_set=None, max_count=None):
+    def _flushmany_signals(self, model):
+        self.logger.info('Flushing %s in "flushmany" mode.', model.__name__)
         sent_count = 0
         burst_count = self._get_signal_burst_count(model)
-        signal_pks = self._list_signal_pks(model, ordered=True, max_count=max_count)
+        query, _ = self._compose_signal_query(model, max_count=burst_count)
+        query = query.with_for_update(skip_locked=True)
+        while True:
+            signals = query.all()
+            sent_count += self._send_and_delete_signal_instances(model, signals)
+            self.signal_session.commit()
+            self.signal_session.expire_all()
+            if len(signals) < burst_count:
+                break
+        return sent_count
+
+    def _flush_signals(self, model, pk_values_set=None, ordered=False, max_count=None):
+        sent_count = 0
+        burst_count = self._get_signal_burst_count(model)
+        signal_pks = self._list_signal_pks(model, ordered=ordered, max_count=max_count)
         self.signal_session.rollback()
         if pk_values_set is not None:
             signal_pks = [pk for pk in signal_pks if pk in pk_values_set]
         for pk_values_chunk in _chunks(signal_pks, size=burst_count):
-            signals = self._lock_signal_instances(model, pk_values_chunk)
+            signals = self._lock_signal_instances(model, pk_values_chunk, ordered=ordered)
             sent_count += self._send_and_delete_signal_instances(model, signals)
             self.signal_session.commit()
             self.signal_session.expire_all()
