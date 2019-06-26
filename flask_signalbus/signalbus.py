@@ -289,7 +289,7 @@ class SignalBus(object):
                 self.signal_session.delete(signal)
                 sent_count += 1
             self.signal_session.commit()
-        self.signal_session.expire_all()
+            self.signal_session.expire_all()
         return sent_count
 
 
