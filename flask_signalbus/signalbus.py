@@ -18,11 +18,11 @@ _SIGNALS_TO_FLUSH_SESSION_INFO_KEY = 'flask_signalbus__signals_to_flush'
 _FLUSHMANY_LIMIT = 50000
 
 
-def _chunks(l, n):
-    """Yield successive n-sized chunks from l."""
+def _chunks(l, size):
+    """Yield successive `size`-sized chunks from the list `l`."""
 
-    for i in range(0, len(l), n):
-        yield l[i:i + n]
+    for i in range(0, len(l), size):
+        yield l[i:i + size]
 
 
 def _raise_error_if_not_signal_model(model):
@@ -266,14 +266,23 @@ class SignalBus(object):
         query, _ = self._compose_signal_query(model, pk_only=True, ordered=ordered, max_count=max_count)
         return query.all()
 
-    def _send_signal_instances(self, model, instances):
-        if len(instances) > 1:
+    def _get_signal_burst_count(self, model):
+        burst_count = int(getattr(model, 'signalbus_burst_count', 1))
+        assert burst_count > 0, '"signalbus_burst_count" must be positive'
+        return burst_count
+
+    def _send_and_delete_signal_instances(self, model, instances):
+        n = len(instances)
+        if n > 1:
             send_signalbus_messages = getattr(model, 'send_signalbus_messages', None)
             if send_signalbus_messages:
                 send_signalbus_messages(instances)
         else:
             for instance in instances:
                 instance.send_signalbus_message()
+        for instance in instances:
+            self.signal_session.delete(instance)
+        return n
 
     def _flushmany_signals(self, model):
         self.logger.info('Flushing %s in "flushmany" mode.', model.__name__)
@@ -286,21 +295,17 @@ class SignalBus(object):
         return sent_count
 
     def _flush_signals(self, model, pk_values_set=None, max_count=None):
+        sent_count = 0
+        burst_count = self._get_signal_burst_count(model)
         signal_pks = self._list_signal_pks(model, ordered=True, max_count=max_count)
+        self.signal_session.rollback()
         if pk_values_set is not None:
             signal_pks = [pk for pk in signal_pks if pk in pk_values_set]
-        sent_count = 0
-        burst_count = int(getattr(model, 'signalbus_burst_count', 1))
-        assert burst_count > 0, '"signalbus_burst_count" must be positive'
-        self.signal_session.commit()
-        for pk_values_list in _chunks(signal_pks, burst_count):
-            signals = self._lock_signal_instances(model, pk_values_list)
-            self._send_signal_instances(model, signals)
-            for signal in signals:
-                self.signal_session.delete(signal)
+        for pk_values_chunk in _chunks(signal_pks, size=burst_count):
+            signals = self._lock_signal_instances(model, pk_values_chunk)
+            sent_count += self._send_and_delete_signal_instances(model, signals)
             self.signal_session.commit()
             self.signal_session.expire_all()
-            sent_count += len(signals)
         return sent_count
 
 
