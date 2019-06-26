@@ -296,12 +296,12 @@ class SignalBus(object):
     def _flush_models(self, flush_fn, models):
         sent_count = 0
         models_to_flush = self.get_signal_models() if models is None else models
-        for model in models_to_flush:
-            try:
+        try:
+            for model in models_to_flush:
                 _raise_error_if_not_signal_model(model)
                 sent_count += flush_fn(model)
-            finally:
-                self.signal_session.remove()
+        finally:
+            self.signal_session.remove()
         return sent_count
 
     def _flushordered_signals(self, model):
