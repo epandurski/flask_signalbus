@@ -38,22 +38,23 @@ subclass of ``db.Model``), which however has a
 - The signal model class **may** have a ``send_signalbus_messages``
   *class method* which accepts one positional argument: an iterable of
   instances of the class. The method should be implemented in such a
-  way that when it returns, all messages for the passed instances,
+  way that when it returns, all messages for the passed instances
   are guaranteed to be successfully sent and stored by the broker.
-  Implementing a ``send_signalbus_messages`` class method may greatly
+  Implementing a ``send_signalbus_messages`` class method can greatly
   improve performance, because message brokers are usually optimized
   to process messages in batches much more efficiently.
+
+- The signal model class **may** have a ``signalbus_burst_count``
+  integer attribute defined, which determines how many individual
+  signals will be sent and deleted at once, as a part of one database
+  transaction. This can greatly improve performace in some cases,
+  especially when the ``send_signalbus_messages`` class method is
+  implemented efficiently. If not defined, it defaults to ``1``.
 
 - The signal model class **may** have a ``signalbus_autoflush``
   boolean attribute defined, which determines if signals of that type
   will be automatically sent over the message bus after each
   transaction commit. If not defined, it defaults to `True`.
-
-- The signal model class **may** have a ``signalbus_burst_count``
-  integer attribute defined, which determines how many individual
-  signals will be deleted at once, as a part of one database
-  transaction. This might be useful in some cases, to improve
-  performace. If not defined, it defaults to ``1``.
 
 - The signal model class **may** have a ``signalbus_order_by`` tuple
   attribute defined, which determines the order in which signals will
