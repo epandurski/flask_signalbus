@@ -46,10 +46,11 @@ subclass of ``db.Model``), which however has a
 
 - The signal model class **may** have a ``signalbus_burst_count``
   integer attribute defined, which determines how many individual
-  signals will be sent and deleted at once, as a part of one database
-  transaction. This can greatly improve performace in some cases,
-  especially when the ``send_signalbus_messages`` class method is
-  implemented efficiently. If not defined, it defaults to ``1``.
+  signals can be sent and deleted at once, as a part of one database
+  transaction. This can greatly improve performace in some cases when
+  auto-flushing is disabled, especially when the
+  ``send_signalbus_messages`` class method is implemented
+  efficiently. If not defined, it defaults to ``1``.
 
 - The signal model class **may** have a ``signalbus_autoflush``
   boolean attribute defined, which determines if signals of that type
