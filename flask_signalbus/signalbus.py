@@ -194,30 +194,14 @@ class SignalBus(object):
 
         """
 
-        models_to_flush = self.get_signal_models() if models is None else models
-        try:
-            sent_count = 0
-            for model in models_to_flush:
-                _raise_error_if_not_signal_model(model)
-                sent_count += self._flushmany_signals_with_retry(model)
-            return sent_count
-        finally:
-            self.signal_session.remove()
+        return self._flush_models(flush_fn=self._flushmany_signals_with_retry, models=models)
 
     def flushordered(self, models=None):
         """TODO
 
         """
 
-        models_to_flush = self.get_signal_models() if models is None else models
-        try:
-            sent_count = 0
-            for model in models_to_flush:
-                _raise_error_if_not_signal_model(model)
-                sent_count += self._flushordered_signals(model)
-            return sent_count
-        finally:
-            self.signal_session.remove()
+        return self._flush_models(flush_fn=self._flushordered_signals, models=models)
 
     def _init_app(self, app):
         from . import signalbus_cli
@@ -308,6 +292,17 @@ class SignalBus(object):
         for instance in instances:
             self.signal_session.delete(instance)
         return n
+
+    def _flush_models(self, flush_fn, models):
+        sent_count = 0
+        models_to_flush = self.get_signal_models() if models is None else models
+        for model in models_to_flush:
+            try:
+                _raise_error_if_not_signal_model(model)
+                sent_count += flush_fn(model)
+            finally:
+                self.signal_session.remove()
+        return sent_count
 
     def _flushordered_signals(self, model):
         self.logger.info('Flushing %s in "flushordered" mode.', model.__name__)
