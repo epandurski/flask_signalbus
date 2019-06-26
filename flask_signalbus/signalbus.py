@@ -266,6 +266,15 @@ class SignalBus(object):
         query, _ = self._compose_signal_query(model, pk_only=True, ordered=ordered, max_count=max_count)
         return query.all()
 
+    def _send_signal_instances(self, model, instances):
+        if len(instances) > 1:
+            send_signalbus_messages = getattr(model, 'send_signalbus_messages', None)
+            if send_signalbus_messages:
+                send_signalbus_messages(instances)
+        else:
+            for instance in instances:
+                instance.send_signalbus_message()
+
     def _flushmany_signals(self, model):
         self.logger.info('Flushing %s in "flushmany" mode.', model.__name__)
         sent_count = 0
@@ -285,12 +294,13 @@ class SignalBus(object):
         assert burst_count > 0, '"signalbus_burst_count" must be positive'
         self.signal_session.commit()
         for pk_values_list in _chunks(signal_pks, burst_count):
-            for signal in self._lock_signal_instances(model, pk_values_list):
-                signal.send_signalbus_message()
+            signals = self._lock_signal_instances(model, pk_values_list)
+            self._send_signal_instances(model, signals)
+            for signal in signals:
                 self.signal_session.delete(signal)
-                sent_count += 1
             self.signal_session.commit()
             self.signal_session.expire_all()
+            sent_count += len(signals)
         return sent_count
 
 

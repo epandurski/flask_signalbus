@@ -118,6 +118,30 @@ def Signal(db, send_mock):
 
 
 @pytest.fixture
+def SignalSendMany(db, send_mock):
+    class SignalSendMany(db.Model):
+        __tablename__ = 'test_signal_send_many'
+        id = db.Column(db.Integer, primary_key=True)
+        value = db.Column(db.String(60))
+
+        signalbus_autoflush = False
+        signalbus_burst_count = 100
+        signalbus_order_by = (value,)
+
+        def send_signalbus_message(self):
+            pass
+
+        @classmethod
+        def send_signalbus_messages(cls, instances):
+            for instance in instances:
+                send_mock(instance.id)
+
+    db.create_all()
+    yield SignalSendMany
+    db.drop_all()
+
+
+@pytest.fixture
 def SignalProperty(db, send_mock, Signal):
     class SignalProperty(db.Model):
         __tablename__ = 'test_signal_property'
@@ -139,19 +163,6 @@ def NonSignal(db):
 
     db.create_all()
     yield NonSignal
-    db.drop_all()
-
-
-@pytest.fixture
-def ShardingKey(atomic_db):
-    db = atomic_db
-
-    class ShardingKey(db.Model):
-        __tablename__ = 'test_sharding_key'
-        id = db.Column(db.Integer, primary_key=True)
-
-    db.create_all()
-    yield ShardingKey
     db.drop_all()
 
 

@@ -32,7 +32,17 @@ subclass of ``db.Model``), which however has a
 - The ``send_signalbus_messages`` method should be implemented in such
   a way that when it returns, the message is guaranteed to be
   successfully sent and stored by the broker. Normally, this means
-  that an acknowledge has to be received for the message.
+  that an acknowledge has been received for the message from the
+  broker.
+
+- The signal model class **may** have a ``send_signalbus_messages``
+  *class method* which accepts one positional argument: an iterable of
+  instances of the class. The method should be implemented in such a
+  way that when it returns, all messages for the passed instances,
+  are guaranteed to be successfully sent and stored by the broker.
+  Implementing a ``send_signalbus_messages`` class method may greatly
+  improve performance, because message brokers are usually optimized
+  to process messages in batches much more efficiently.
 
 - The signal model class **may** have a ``signalbus_autoflush``
   boolean attribute defined, which determines if signals of that type

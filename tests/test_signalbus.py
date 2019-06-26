@@ -2,6 +2,7 @@ import pytest
 import flask_sqlalchemy as fsa
 from flask_signalbus import SignalBus
 from conftest import SignalBusAlchemy
+from mock import call
 
 
 def test_create_signalbus_alchemy(app):
@@ -50,6 +51,22 @@ def test_flush_nonsignal_model(app, signalbus, NonSignal):
     assert len(signalbus.get_signal_models()) == 0
     with pytest.raises(RuntimeError):
         signalbus.flush([NonSignal], wait=0.0)
+
+
+def test_flush_signal_send_many_success(db, signalbus, send_mock, SignalSendMany):
+    assert len(signalbus.get_signal_models()) == 1
+    sig1 = SignalSendMany(value='b')
+    sig2 = SignalSendMany(value='a')
+    db.session.add(sig1)
+    db.session.add(sig2)
+    db.session.flush()
+    sig1_id = sig1.id
+    sig2_id = sig2.id
+    db.session.commit()
+    sent_count = signalbus.flush([SignalSendMany], wait=0.0)
+    assert sent_count == 2
+    assert send_mock.call_count == 2
+    assert send_mock.call_args_list == [call(sig2_id), call(sig1_id)]
 
 
 def test_flush_all_signal_models(app, signalbus, Signal, NonSignal):
