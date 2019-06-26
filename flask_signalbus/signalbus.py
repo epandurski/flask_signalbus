@@ -282,6 +282,7 @@ class SignalBus(object):
             signal_pks = [pk for pk in signal_pks if pk in pk_values_set]
         sent_count = 0
         burst_count = int(getattr(model, 'signalbus_burst_count', 1))
+        assert burst_count > 0, '"signalbus_burst_count" must be positive'
         self.signal_session.commit()
         for pk_values_list in _chunks(signal_pks, burst_count):
             for signal in self._lock_signal_instances(model, pk_values_list):
