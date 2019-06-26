@@ -273,10 +273,8 @@ class SignalBus(object):
 
     def _send_and_delete_signal_instances(self, model, instances):
         n = len(instances)
-        if n > 1:
-            send_signalbus_messages = getattr(model, 'send_signalbus_messages', None)
-            if send_signalbus_messages:
-                send_signalbus_messages(instances)
+        if n > 1 and hasattr(model, 'send_signalbus_messages'):
+            model.send_signalbus_messages(instances)
         else:
             for instance in instances:
                 instance.send_signalbus_message()
