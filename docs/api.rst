@@ -29,6 +29,11 @@ subclass of ``db.Model``), which however has a
           # Send the message to the message bus.
           print(MySignal.__marshmallow_schema__.dumps(self))
 
+- The ``send_signalbus_messages`` method should be implemented in such
+  a way that when it returns, the message is guaranteed to be
+  successfully sent and stored by the broker. Normally, this means
+  that an acknowledge has to be received for the message.
+
 - The signal model class **may** have a ``signalbus_autoflush``
   boolean attribute defined, which determines if signals of that type
   will be automatically sent over the message bus after each
