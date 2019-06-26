@@ -157,21 +157,21 @@ class SignalBus(object):
 
         """
 
-        models_to_flush = self.get_signal_models() if models is None else models
-        pks_to_flush = {}
+        sent_count = 0
         try:
+            models_to_flush = self.get_signal_models() if models is None else models
+            pks_by_model = {}
             for model in models_to_flush:
                 _raise_error_if_not_signal_model(model)
-                pks_to_flush[model] = self._list_signal_pks(model)
+                pks_by_model[model] = self._list_signal_pks(model)
             self.signal_session.rollback()
             time.sleep(wait)
-            sent_count = 0
             for model in models_to_flush:
                 self.logger.info('Flushing %s.', model.__name__)
-                sent_count += self._flush_signals_with_retry(model, pk_values_set=set(pks_to_flush[model]))
-            return sent_count
+                sent_count += self._flush_signals_with_retry(model, pk_values_set=set(pks_by_model[model]))
         finally:
             self.signal_session.remove()
+        return sent_count
 
     def flushmany(self, models=None):
         """Send a potentially huge number of pending signals over the message bus.
