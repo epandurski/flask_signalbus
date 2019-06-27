@@ -22,7 +22,7 @@ subclass of ``db.Model``), which however has a
   class MySignal(db.Model):
       id = db.Column(db.Integer, primary_key=True, autoincrement=True)
       message_text = db.Column(db.Text, nullable=False)
-      signalbus_autoflush = True
+      signalbus_autoflush = False
       signalbus_order_by = (id, db.desc(message_text))
 
       def send_signalbus_message(self):
