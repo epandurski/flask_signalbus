@@ -48,10 +48,10 @@ def flush(signal_names, exclude, wait):
     If a list of SIGNAL_NAMES is specified, flushes only those
     signals. If no SIGNAL_NAMES are specified, flushes all signals.
 
-    This command assumes that all pending signals can fit into
-    memory. Normally, to use "flush" auto-flushing should be enabled
-    for the given signal type. Having multiple processes that run this
-    method in parallel is generally not a good idea.
+    This method assumes that auto-flushing is enabled for the given
+    signal types, and therefore the number of pending signals is not
+    too big. Having multiple processes that run this method in
+    parallel is generally not a good idea.
 
     """
 
@@ -87,9 +87,9 @@ def flushmany(signal_names, exclude):
 
     "flushmany" can be very useful when recovering from long periods
     of disconnectedness from the message bus, or when auto-flushing is
-    disabled. If your database supports "FOR UPDATE SKIP LOCKED",
-    multiple processes will be able run this command in parallel,
-    without stepping on each others' toes.
+    disabled. If your database (and its SQLAlchemy dialect) supports
+    "FOR UPDATE SKIP LOCKED", multiple processes will be able run this
+    command in parallel, without stepping on each others' toes.
 
     """
 

@@ -15,7 +15,7 @@ __all__ = ['SignalBus', 'SignalBusMixin']
 
 
 _SIGNALS_TO_FLUSH_SESSION_INFO_KEY = 'flask_signalbus__signals_to_flush'
-_FLUSHORDERED_LIMIT = 50000
+_FLUSH_LIMIT = 50000
 
 
 def _chunks(l, size):
@@ -142,11 +142,10 @@ class SignalBus(object):
     def flush(self, models=None, wait=3.0):
         """Send all pending signals over the message bus.
 
-        This method assumes that all pending signals can fit into
-        memory. Normally, to use `SignalBus.flush` auto-flushing
-        should be enabled for the given signal type. Having multiple
-        processes that run this method in parallel is generally *not a
-        good idea*.
+        This method assumes that auto-flushing is enabled for the
+        given signal types, and therefore the number of pending
+        signals is not too big. Having multiple processes that run
+        this method in parallel is generally *not a good idea*.
 
         :param models: If passed, flushes only signals of the specified types.
         :type models: list(`signal-model`) or `None`
@@ -184,9 +183,10 @@ class SignalBus(object):
 
         `SignalBus.flushmany` can be very useful when recovering from
         long periods of disconnectedness from the message bus, or when
-        auto-flushing is disabled. If your database supports ``FOR
-        UPDATE SKIP LOCKED``, multiple processes will be able run this
-        method in parallel, without stepping on each others' toes.
+        auto-flushing is disabled. If your database (and its
+        SQLAlchemy dialect) supports ``FOR UPDATE SKIP LOCKED``,
+        multiple processes will be able run this method in parallel,
+        without stepping on each others' toes.
 
         :param models: If passed, flushes only signals of the specified types.
         :type models: list(`signal-model`) or `None`
@@ -308,9 +308,9 @@ class SignalBus(object):
         self.logger.info('Flushing %s in "flushordered" mode.', model.__name__)
         sent_count = 0
         while True:
-            n = self._flush_signals(model, ordered=True, max_count=_FLUSHORDERED_LIMIT)
+            n = self._flush_signals(model, ordered=True)
             sent_count += n
-            if n < _FLUSHORDERED_LIMIT:
+            if n < _FLUSH_LIMIT:
                 return sent_count
 
     def _flushmany_signals(self, model):
@@ -328,10 +328,10 @@ class SignalBus(object):
                 break
         return sent_count
 
-    def _flush_signals(self, model, pk_values_set=None, ordered=False, max_count=None):
+    def _flush_signals(self, model, pk_values_set=None, ordered=False):
         sent_count = 0
         burst_count = self._get_signal_burst_count(model)
-        signal_pks = self._list_signal_pks(model, ordered=ordered, max_count=max_count)
+        signal_pks = self._list_signal_pks(model, ordered=ordered, max_count=_FLUSH_LIMIT)
         self.signal_session.rollback()
         if pk_values_set is not None:
             signal_pks = [pk for pk in signal_pks if pk in pk_values_set]
