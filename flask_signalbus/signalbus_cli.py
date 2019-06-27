@@ -131,7 +131,7 @@ def flushordered(signal_names, exclude, repeat):
     model class. When auto-flushing is disabled for the given signal
     types, this method guarantes that messages will be sent in the
     correct order. Having multiple processes that run this method in
-    parallel is generally *not a good idea*.
+    parallel is generally not a good idea.
 
     """
 
