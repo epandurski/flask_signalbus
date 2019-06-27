@@ -15,7 +15,7 @@ __all__ = ['SignalBus', 'SignalBusMixin']
 
 
 _SIGNALS_TO_FLUSH_SESSION_INFO_KEY = 'flask_signalbus__signals_to_flush'
-_FLUSH_LIMIT = 50000
+_FLUSH_SIGNALS_LIMIT = 50000
 
 
 def _chunks(l, size):
@@ -319,7 +319,7 @@ class SignalBus(object):
         while True:
             n = self._flush_signals(model, ordered=True)
             sent_count += n
-            if n < _FLUSH_LIMIT:
+            if n < _FLUSH_SIGNALS_LIMIT:
                 return sent_count
 
     def _flushmany_signals(self, model):
@@ -340,7 +340,7 @@ class SignalBus(object):
     def _flush_signals(self, model, pk_values_set=None, ordered=False):
         sent_count = 0
         burst_count = self._get_signal_burst_count(model)
-        signal_pks = self._list_signal_pks(model, ordered=ordered, max_count=_FLUSH_LIMIT)
+        signal_pks = self._list_signal_pks(model, ordered=ordered, max_count=_FLUSH_SIGNALS_LIMIT)
         self.signal_session.rollback()
         if pk_values_set is not None:
             signal_pks = [pk for pk in signal_pks if pk in pk_values_set]
