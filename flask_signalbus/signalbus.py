@@ -140,7 +140,7 @@ class SignalBus(object):
         ]
 
     def flush(self, models=None, wait=3.0):
-        """Send all pending signals over the message bus.
+        """Send pending signals over the message bus.
 
         This method assumes that auto-flushing is enabled for the
         given signal types, and therefore the number of pending
