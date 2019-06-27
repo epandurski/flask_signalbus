@@ -7,6 +7,7 @@ Version 0.5.0
 - Add support for `send_signalbus_messages` class method. This can
   greatly improve performance by receiving acknowledges for a whole
   batch of messages at once.
+- Improved documentation.
 
 
 Version 0.4.4
