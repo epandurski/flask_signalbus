@@ -72,3 +72,9 @@ def test_show_pending(app, signalbus_with_pending_signal):
     result = runner.invoke(args=['signalbus', 'pending'])
     assert 'Signal' in result.output
     assert 'Total pending: 1' in result.output
+
+
+def test_flushordered_pending(app, signalbus_with_pending_signal, caplog):
+    runner = app.test_cli_runner()
+    runner.invoke(args=['signalbus', 'flushordered'])
+    assert '1 signal has been successfully processed' in caplog.text
