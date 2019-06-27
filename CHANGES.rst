@@ -10,6 +10,7 @@ Version 0.5.0
 - Added `flushordered()` method, and `flushordered` CLI command. This
   allows sending messages in predictable order, and when auto-flushing
   is disabled -- the correct order is guaranteed.
+- General code improvements.
 - Improved documentation.
 
 
