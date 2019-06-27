@@ -176,17 +176,16 @@ class SignalBus(object):
         """Send a potentially huge number of pending signals over the message bus.
 
         This method assumes that the number of pending signals might
-        be huge, so that they might not fit into memory. Using
-        `SignalBus.flushmany` when auto-flushing is enabled for the
-        given signal types is not recommended, because it may result
-        in multiple delivery of messages.
+        be huge. Using `SignalBus.flushmany` when auto-flushing is
+        enabled for the given signal types is not recommended, because
+        it may result in multiple delivery of messages.
 
         `SignalBus.flushmany` can be very useful when recovering from
         long periods of disconnectedness from the message bus, or when
         auto-flushing is disabled. If your database (and its
         SQLAlchemy dialect) supports ``FOR UPDATE SKIP LOCKED``,
-        multiple processes will be able run this method in parallel,
-        without stepping on each others' toes.
+        multiple processes will be able to run this method in
+        parallel, without stepping on each others' toes.
 
         :param models: If passed, flushes only signals of the specified types.
         :type models: list(`signal-model`) or `None`

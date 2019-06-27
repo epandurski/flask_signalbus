@@ -80,16 +80,15 @@ def flushmany(signal_names, exclude):
     signals. If no SIGNAL_NAMES are specified, flushes all signals.
 
     This command assumes that the number of pending signals might be
-    huge, so that they might not fit into memory. Using "flushmany"
-    when auto-flushing is enabled for the given signal types is not
-    recommended, because it may result in multiple delivery of
-    messages.
+    huge. Using "flushmany" when auto-flushing is enabled for the
+    given signal types is not recommended, because it may result in
+    multiple delivery of messages.
 
     "flushmany" can be very useful when recovering from long periods
     of disconnectedness from the message bus, or when auto-flushing is
     disabled. If your database (and its SQLAlchemy dialect) supports
-    "FOR UPDATE SKIP LOCKED", multiple processes will be able run this
-    command in parallel, without stepping on each others' toes.
+    "FOR UPDATE SKIP LOCKED", multiple processes will be able to run
+    this command in parallel, without stepping on each others' toes.
 
     """
 
