@@ -8,7 +8,7 @@ with the prefix ``signalbus``. To see all available commands, use::
 
     $ flask signalbus --help
 
-To send all pending signals over the message bus, use the following
+To send pending signals over the message bus, use the following
 command::
 
     $ flask signalbus flush
