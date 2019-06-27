@@ -1,4 +1,5 @@
 import sys
+import time
 import logging
 import click
 from flask.cli import with_appcontext
@@ -41,8 +42,9 @@ def signalbus():
 @click.option('-w', '--wait', type=float, help='The number of seconds "flush" will wait after'
               ' obtaining the list of pending signals, to allow concurrent senders to complete.'
               ' The default is %s seconds.' % SignalBus.flush.__defaults__[1])
+@click.option('-r', '--repeat', type=float, help='Flush every FLOAT seconds.')
 @click.argument('signal_names', nargs=-1)
-def flush(signal_names, exclude, wait):
+def flush(signal_names, exclude, wait, repeat):
     """Send pending signals over the message bus.
 
     If a list of SIGNAL_NAMES is specified, flushes only those
@@ -55,25 +57,31 @@ def flush(signal_names, exclude, wait):
 
     """
 
-    signalbus = current_app.extensions['signalbus']
-    models_to_flush = _get_models_to_flush(signalbus, signal_names, exclude)
-    try:
-        if wait is not None:
-            signal_count = signalbus.flush(models_to_flush, wait=max(0.0, wait))
+    while True:
+        signalbus = current_app.extensions['signalbus']
+        models_to_flush = _get_models_to_flush(signalbus, signal_names, exclude)
+        try:
+            if wait is not None:
+                signal_count = signalbus.flush(models_to_flush, wait=max(0.0, wait))
+            else:
+                signal_count = signalbus.flush(models_to_flush)
+        except Exception:
+            logger = logging.getLogger(__name__)
+            logger.exception('Caught error while sending pending signals.')
+            sys.exit(1)
+        _report_signal_count(signal_count)
+        if repeat is None:
+            break
         else:
-            signal_count = signalbus.flush(models_to_flush)
-    except Exception:
-        logger = logging.getLogger(__name__)
-        logger.exception('Caught error while sending pending signals.')
-        sys.exit(1)
-    _report_signal_count(signal_count)
+            time.sleep(max(0.0, repeat))
 
 
 @signalbus.command()
 @with_appcontext
 @click.option('-e', '--exclude', multiple=True, help='Do not flush signals with the specified name.')
+@click.option('-r', '--repeat', type=float, help='Flush every FLOAT seconds.')
 @click.argument('signal_names', nargs=-1)
-def flushmany(signal_names, exclude):
+def flushmany(signal_names, exclude, repeat):
     """Send a potentially huge number of pending signals over the message bus.
 
     If a list of SIGNAL_NAMES is specified, flushes only those
@@ -92,17 +100,28 @@ def flushmany(signal_names, exclude):
 
     """
 
-    signalbus = current_app.extensions['signalbus']
-    models_to_flush = _get_models_to_flush(signalbus, signal_names, exclude)
-    signal_count = signalbus.flushmany(models_to_flush)
-    _report_signal_count(signal_count)
+    while True:
+        signalbus = current_app.extensions['signalbus']
+        models_to_flush = _get_models_to_flush(signalbus, signal_names, exclude)
+        try:
+            signal_count = signalbus.flushmany(models_to_flush)
+        except Exception:
+            logger = logging.getLogger(__name__)
+            logger.exception('Caught error while sending pending signals.')
+            sys.exit(1)
+        _report_signal_count(signal_count)
+        if repeat is None:
+            break
+        else:
+            time.sleep(max(0.0, repeat))
 
 
 @signalbus.command()
 @with_appcontext
 @click.option('-e', '--exclude', multiple=True, help='Do not flush signals with the specified name.')
+@click.option('-r', '--repeat', type=float, help='Flush every FLOAT seconds.')
 @click.argument('signal_names', nargs=-1)
-def flushordered(signal_names, exclude):
+def flushordered(signal_names, exclude, repeat):
     """Send all pending messages in predictable order.
 
     If a list of SIGNAL_NAMES is specified, flushes only those
@@ -112,14 +131,24 @@ def flushordered(signal_names, exclude):
     model class. When auto-flushing is disabled for the given signal
     types, this method guarantes that messages will be sent in the
     correct order. Having multiple processes that run this method in
-    parallel is generally *not a good idea*.
+    parallel is generally not a good idea.
 
     """
 
-    signalbus = current_app.extensions['signalbus']
-    models_to_flush = _get_models_to_flush(signalbus, signal_names, exclude)
-    signal_count = signalbus.flushordered(models_to_flush)
-    _report_signal_count(signal_count)
+    while True:
+        signalbus = current_app.extensions['signalbus']
+        models_to_flush = _get_models_to_flush(signalbus, signal_names, exclude)
+        try:
+            signal_count = signalbus.flushordered(models_to_flush)
+        except Exception:
+            logger = logging.getLogger(__name__)
+            logger.exception('Caught error while sending pending signals.')
+            sys.exit(1)
+        _report_signal_count(signal_count)
+        if repeat is None:
+            break
+        else:
+            time.sleep(max(0.0, repeat))
 
 
 @signalbus.command()
