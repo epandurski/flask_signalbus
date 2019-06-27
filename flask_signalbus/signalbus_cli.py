@@ -81,7 +81,7 @@ def flushmany(signal_names, exclude):
 
     This command assumes that the number of pending signals might be
     huge, so that they might not fit into memory. Using "flushmany"
-    when auto-flushing is enabled for the given signal type is not
+    when auto-flushing is enabled for the given signal types is not
     recommended, because it may result in multiple delivery of
     messages.
 
@@ -110,10 +110,10 @@ def flushordered(signal_names, exclude):
     signals. If no SIGNAL_NAMES are specified, flushes all signals.
 
     The order is defined by the "signalbus_order_by" attribute of the
-    model class. When auto-flushing is disabled, this method guarantes
-    that messages will be sent in the correct order. Having multiple
-    processes that run this method in parallel is generally *not a
-    good idea*.
+    model class. When auto-flushing is disabled for the given signal
+    types, this method guarantes that messages will be sent in the
+    correct order. Having multiple processes that run this method in
+    parallel is generally *not a good idea*.
 
     """
 

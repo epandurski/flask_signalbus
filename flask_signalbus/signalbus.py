@@ -178,8 +178,8 @@ class SignalBus(object):
         This method assumes that the number of pending signals might
         be huge, so that they might not fit into memory. Using
         `SignalBus.flushmany` when auto-flushing is enabled for the
-        given signal type is not recommended, because it may result in
-        multiple delivery of messages.
+        given signal types is not recommended, because it may result
+        in multiple delivery of messages.
 
         `SignalBus.flushmany` can be very useful when recovering from
         long periods of disconnectedness from the message bus, or when
@@ -200,10 +200,10 @@ class SignalBus(object):
         """Send all pending messages in predictable order.
 
         The order is defined by the ``signalbus_order_by`` attribute
-        of the model class. When auto-flushing is disabled, this
-        method guarantes that messages will be sent in the correct
-        order. Having multiple processes that run this method in
-        parallel is generally *not a good idea*.
+        of the model class. When auto-flushing is disabled for the
+        given signal types, this method guarantes that messages will
+        be sent in the correct order. Having multiple processes that
+        run this method in parallel is generally *not a good idea*.
 
         :param models: If passed, flushes only signals of the specified types.
         :type models: list(`signal-model`) or `None`
