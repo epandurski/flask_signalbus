@@ -101,6 +101,30 @@ def flushmany(signal_names, exclude):
 
 @signalbus.command()
 @with_appcontext
+@click.option('-e', '--exclude', multiple=True, help='Do not flush signals with the specified name.')
+@click.argument('signal_names', nargs=-1)
+def flushordered(signal_names, exclude):
+    """Send all pending messages in predictable order.
+
+    If a list of SIGNAL_NAMES is specified, flushes only those
+    signals. If no SIGNAL_NAMES are specified, flushes all signals.
+
+    The order is defined by the "signalbus_order_by" attribute of the
+    model class. When auto-flushing is disabled, this method guarantes
+    that messages will be sent in the correct order. Having multiple
+    processes that run this method in parallel is generally *not a
+    good idea*.
+
+    """
+
+    signalbus = current_app.extensions['signalbus']
+    models_to_flush = _get_models_to_flush(signalbus, signal_names, exclude)
+    signal_count = signalbus.flushordered(models_to_flush)
+    _report_signal_count(signal_count)
+
+
+@signalbus.command()
+@with_appcontext
 def signals():
     """Show all signal types."""
 

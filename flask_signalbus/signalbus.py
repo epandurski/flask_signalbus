@@ -197,7 +197,17 @@ class SignalBus(object):
         return self._flush_models(flush_fn=self._flushmany_signals_with_retry, models=models)
 
     def flushordered(self, models=None):
-        """TODO
+        """Send all pending messages in predictable order.
+
+        The order is defined by the ``signalbus_order_by`` attribute
+        of the model class. When auto-flushing is disabled, this
+        method guarantes that messages will be sent in the correct
+        order. Having multiple processes that run this method in
+        parallel is generally *not a good idea*.
+
+        :param models: If passed, flushes only signals of the specified types.
+        :type models: list(`signal-model`) or `None`
+        :return: The total number of signals that have been sent
 
         """
 
