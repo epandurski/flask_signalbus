@@ -39,8 +39,8 @@ One practical and popular solution is to pick one of the services to
 be the primary handler for some particular event. This service will
 handle the original event with a single commit, and then take
 responsibility for asynchronously communicating the secondary effects
-to other services via a message bus of some sort (RabbitMQ, Kafka,
-etc.).
+to other services via a message bus of some sort (`RabbitMQ`_,
+`Kafka`_, etc.).
 
 Thus, the processing of each "distributed" event involves three steps:
 
@@ -53,10 +53,14 @@ Thus, the processing of each "distributed" event involves three steps:
   3. Messages' corresponding table rows are deleted.
 
 *Flask-SignalBus* automates this process and make is less error prone.
-It automatically sends the recorded messages after each transaction
-commit (steps 2 and 3). Also, when needed, the sending of the recorded
-messages can be triggered explicitly with a `method call
-<SignalBus.flush>`, or through the Flask `command-line-interface`.
+It can automatically send the recorded messages after each transaction
+commit (steps 2 and 3). Also, the sending of the recorded messages can
+be triggered explicitly with a `method call <SignalBus.flush>`, or
+through the Flask `command-line-interface`.
+
+
+.. _RabbitMQ: http://www.rabbitmq.com/
+.. _Kafka: http://kafka.apache.org/
 
 
 Installation
@@ -90,14 +94,19 @@ bus should have its own database model class defined. For example::
           # the message over the message bus!
 
 Here, ``MySignal`` represent one particular type of message that we
-will be sending over the message bus. Now, each time we add a new
-object of type ``MySignal`` to ``db.session``, Flask-SignalBus will
-take note of that, and finally, when the database transaction is
-committed, it will call the ``MySignal.send_signalbus_message``
-method, and delete the corresponding row from the database table. All
-this will happen automatically, so that the only thing we need to do
-as a part of the database transaction, is to add our message to
-``db.session``::
+will be sending over the message bus.
+
+
+Auto-flushing
+`````````````
+
+Each time we add a new object of type ``MySignal`` to ``db.session``,
+Flask-SignalBus will take note of that, and finally, when the database
+transaction is committed, it will call the
+``MySignal.send_signalbus_message`` method, and delete the
+corresponding row from the database table. All this will happen
+automatically, so that the only thing we need to do as a part of the
+database transaction, is to add our message to ``db.session``::
 
   # =========== Our transaction begins here. ===========
 
@@ -117,22 +126,26 @@ as a part of the database transaction, is to add our message to
 Within one database transaction we can add many messages (signals) of
 many different types. As long as they have a
 ``send_signalbus_message`` method defined, they all will be processed
-and sent automatically.
+and sent automatically (flushed).
+
+This *auto-flushing* behavior can be disabled if it is not desired. In
+this case, the sending of the recorded messages need to be triggered
+explicitly.
 
 
 Pending Signals
 ```````````````
 
-If, for any reason, our program is terminated right after a message
-has been recorded in the SQL database, but before it has been sent
-over the message bus, the row representing the message will remain in
-the database. We call this a *pending signal*.
+When auto-flushing is disabled, or when the program has stopped before
+the message had been sent over the message bus, the row representing
+the message will remain in the database for some time. We call this a
+*pending signal*.
 
-In order to guarantee that all pending signals are processed and sent
-in time, even when the application that generates them is down, it is
-recommended that pending signals are flushed periodically,
-independently from the application that generates them. This can be
-done in a ``cron`` job for example. (See `command-line-interface`.)
+To make sure that pending signals are processed in time, even when the
+application that generated them is off-line, it is recommended that
+pending signals are flushed periodically, independently from the
+application that generates them. This can be done in a ``cron`` job
+for example. (See `command-line-interface`.)
 
 
 Application Factory Pattern
@@ -158,10 +171,16 @@ Note that `SignalBusMixin` should always come before
 Message Ordering, Message Duplication
 `````````````````````````````````````
 
-Flask-SignalBus does not give guarantees about the order in which the
-messages will be sent over the message bus. Also, sometimes a single
-message can be sent more than once. Keep that in mind while designing
-your system.
+Normally, Flask-SignalBus does not give guarantees about the order in
+which the messages are sent over the message bus. Also, sometimes a
+single message can be sent more than once. Keep that in mind while
+designing your system.
+
+When you want to guarantee that messages are sent in a particular
+order, you should disable *auto-flushing*, define a
+``signalbus_order_by`` attribute on the model class, and always use
+the ``flushordered`` CLI command to flush the messages
+explicitly. (Messages can still be sent more than once, though.)
 
 
 Transaction Management Utilities
