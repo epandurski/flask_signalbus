@@ -1,6 +1,12 @@
 Changelog
 =========
 
+Version 0.5.1
+-------------
+
+- Changed a message loglevel from "warning" to "info".
+
+
 Version 0.5.0
 -------------
 

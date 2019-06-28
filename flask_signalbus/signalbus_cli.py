@@ -26,9 +26,9 @@ def _get_models_to_flush(signalbus, signal_names, exclude):
 def _report_signal_count(signal_count):
     logger = logging.getLogger(__name__)
     if signal_count == 1:
-        logger.warning('%i signal has been successfully processed.', signal_count)
+        logger.info('%i signal has been successfully processed.', signal_count)
     elif signal_count > 1:
-        logger.warning('%i signals have been successfully processed.', signal_count)
+        logger.info('%i signals have been successfully processed.', signal_count)
 
 
 @click.group()
