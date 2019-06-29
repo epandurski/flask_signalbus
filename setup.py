@@ -44,9 +44,9 @@ setup(
         'marshmallow-sqlalchemy>=0.16.1',
     ],
     tests_require=[
-        'pytest',
-        'pytest-cov',
-        'mock',
+        'pytest~=4.6',
+        'pytest-cov~=2.7',
+        'mock~=2.0',
     ],
     classifiers=[
         'Environment :: Web Environment',
