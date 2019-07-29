@@ -46,8 +46,9 @@ def retry_on_deadlock(session, retries=7, min_wait=0.1, max_wait=10.0):
                     if num_failures > retries or not is_serialization_error:
                         raise
                 session.rollback()
-                wait_seconds = min(max_wait, min_wait * 2 ** (num_failures - 1))
-                time.sleep(wait_seconds)
+                if num_failures > 1:
+                    wait_seconds = min(max_wait, min_wait * 2 ** (num_failures - 2))
+                    time.sleep(wait_seconds)
 
         return f
 
