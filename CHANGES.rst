@@ -1,6 +1,14 @@
 Changelog
 =========
 
+Version 0.5.2
+-------------
+
+- Do not wait after the first DB serialization failure
+- Pinned `pytest`, `pytest-cov`, `mock` versions
+- Improved docs
+
+
 Version 0.5.1
 -------------
 
