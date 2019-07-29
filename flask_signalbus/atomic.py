@@ -19,7 +19,7 @@ _ATOMIC_FLAG_SESSION_INFO_KEY = 'flask_signalbus__atomic_flag'
 class _ModelUtilitiesMixin(object):
     @classmethod
     def get_instance(cls, instance_or_pk, *options):
-        """Return a model instance in ``db.session``.
+        """Return a model instance in ``db.session`` or `None`.
 
         :param instance_or_pk: An instance of this model class, or a
           primary key. A composite primary key can be passed as a
@@ -52,7 +52,7 @@ class _ModelUtilitiesMixin(object):
 
     @classmethod
     def lock_instance(cls, instance_or_pk, *options, **kw):
-        """Return a locked model instance in ``db.session``.
+        """Return a locked model instance in ``db.session`` or `None`.
 
         :param instance_or_pk: An instance of this model class, or a
           primary key. A composite primary key can be passed as a
@@ -113,7 +113,7 @@ class AtomicProceduresMixin(object):
        available in the declarative base class (``db.Model``), and
        therefore in every model class.
 
-    3. Databese isolation level will be set to ``REPEATABLE_READ``.
+    3. Database isolation level will be set to ``REPEATABLE_READ``.
 
     """
 
