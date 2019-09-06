@@ -1,6 +1,14 @@
 Changelog
 =========
 
+Version 0.5.3
+-------------
+
+- Register the "after_configured" SQLAlchemy event handler in the
+  SignalBusMixin's constructor. This guarantees that the handler will
+  be executed even if the event is triggered before init_app().
+
+
 Version 0.5.2
 -------------
 

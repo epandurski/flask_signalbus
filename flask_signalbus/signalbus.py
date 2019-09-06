@@ -52,6 +52,10 @@ class SignalBusMixin(object):
 
     """
 
+    def __init__(self, *args, **kwargs):
+        super(SignalBusMixin, self).__init__(*args, **kwargs)
+        event.listen(mapper, 'after_configured', _setup_schema(self.Model, self.session))
+
     def init_app(self, app, *args, **kwargs):
         super(SignalBusMixin, self).init_app(app, *args, **kwargs)
         self.signalbus._init_app(app)
@@ -380,7 +384,8 @@ def _setup_schema(Base, session):
                 schema_class = getattr(model, '__marshmallow__', None)
                 if schema_class is None:
                     schema_class = model.__marshmallow__ = create_schema_class(model)
-                if hasattr(model, 'send_signalbus_message'):
+                schema_class_instance = getattr(model, '__marshmallow_schema__', None)
+                if schema_class_instance is None and hasattr(model, 'send_signalbus_message'):
                     setattr(model, '__marshmallow_schema__', schema_class())
 
     return setup_schema_fn
