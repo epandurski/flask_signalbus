@@ -29,7 +29,7 @@ subclass of ``db.Model``), which however has a
           # Send the message to the message bus.
           print(MySignal.__marshmallow_schema__.dumps(self))
 
-- The ``send_signalbus_messages`` method should be implemented in such
+- The ``send_signalbus_message`` method should be implemented in such
   a way that when it returns, the message is guaranteed to be
   successfully sent and stored by the broker. Normally, this means
   that an acknowledge has been received for the message from the
