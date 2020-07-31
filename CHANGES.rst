@@ -1,6 +1,13 @@
 Changelog
 =========
 
+Version 0.5.4
+-------------
+
+- Do not use the depreciated `marshmallow-sqlalchemy.ModelSchema`
+  class.
+
+
 Version 0.5.3
 -------------
 

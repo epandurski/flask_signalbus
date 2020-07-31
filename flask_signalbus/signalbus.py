@@ -9,7 +9,7 @@ from sqlalchemy import event, inspect, and_, or_
 from sqlalchemy.orm import mapper
 from sqlalchemy.exc import DBAPIError
 from flask_signalbus.utils import retry_on_deadlock, get_db_error_code, DEADLOCK_ERROR_CODES
-from marshmallow_sqlalchemy import ModelSchema, ModelConversionError
+from marshmallow_sqlalchemy import SQLAlchemyAutoSchema, ModelConversionError
 
 __all__ = ['SignalBus', 'SignalBusMixin']
 
@@ -360,17 +360,17 @@ def _setup_schema(Base, session):
     """Create a function which adds `__marshmallow__` attribute to all signal models."""
 
     def create_schema_class(m):
-        if hasattr(m, 'send_signalbus_message'):
+        class Meta(object):
+            model = m
+            include_relationships = True
+            load_instance = True
+
+        if not hasattr(m, 'send_signalbus_message'):
             # Signal models should not use the SQLAlchemy session.
-            class Meta(object):
-                model = m
-        else:
-            class Meta(object):
-                model = m
-                sqla_session = session
+            Meta.sqla_session = session
 
         schema_class_name = '%sSchema' % m.__name__
-        return type(schema_class_name, (ModelSchema,), {'Meta': Meta})
+        return type(schema_class_name, (SQLAlchemyAutoSchema,), {'Meta': Meta})
 
     def setup_schema_fn():
         for model in Base._decl_class_registry.values():
