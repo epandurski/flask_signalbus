@@ -18,6 +18,10 @@ _SIGNALS_TO_FLUSH_SESSION_INFO_KEY = 'flask_signalbus__signals_to_flush'
 _FLUSH_SIGNALS_LIMIT = 50000
 
 
+def _get_class_registry(base):
+    return base.registry._class_registry if hasattr(base, 'registry') else base._decl_class_registry
+
+
 def _chunks(l, size):
     """Yield successive `size`-sized chunks from the list `l`."""
 
@@ -136,7 +140,7 @@ class SignalBus(object):
 
         base = self.db.Model
         return [
-            cls for cls in base._decl_class_registry.values() if (
+            cls for cls in _get_class_registry(base).values() if (
                 isinstance(cls, type)
                 and issubclass(cls, base)
                 and hasattr(cls, 'send_signalbus_message')
@@ -373,7 +377,7 @@ def _setup_schema(Base, session):
         return type(schema_class_name, (SQLAlchemyAutoSchema,), {'Meta': Meta})
 
     def setup_schema_fn():
-        for model in Base._decl_class_registry.values():
+        for model in _get_class_registry(Base).values():
             if hasattr(model, '__tablename__'):
                 if model.__name__.endswith("Schema"):
                     raise ModelConversionError(
