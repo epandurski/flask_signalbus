@@ -5,6 +5,7 @@ import click
 from flask.cli import with_appcontext
 from flask import current_app
 from . import SignalBus
+from .utils import report_signal_count
 
 
 def _get_models_to_flush(signalbus, signal_names, exclude):
@@ -12,23 +13,17 @@ def _get_models_to_flush(signalbus, signal_names, exclude):
     exclude = set(exclude)
     models_to_flush = signalbus.get_signal_models()
     if signal_names and exclude:
-        click.echo('Warning: Specified both SIGNAL_NAMES and exclude option.')
+        logger = logging.getLogger(__name__)
+        logger.warning('Specified both SIGNAL_NAMES and exclude option.')
     if signal_names:
         wrong_signal_names = signal_names - {m.__name__ for m in models_to_flush}
         models_to_flush = [m for m in models_to_flush if m.__name__ in signal_names]
     else:
         wrong_signal_names = exclude - {m.__name__ for m in models_to_flush}
     for name in wrong_signal_names:
-        click.echo('Warning: A signal with name "{}" does not exist.'.format(name))
+        logger = logging.getLogger(__name__)
+        logger.warning('A signal with name "%s" does not exist.', name)
     return [m for m in models_to_flush if m.__name__ not in exclude]
-
-
-def _report_signal_count(signal_count):
-    logger = logging.getLogger(__name__)
-    if signal_count == 1:
-        logger.info('%i signal has been successfully processed.', signal_count)
-    elif signal_count > 1:
-        logger.info('%i signals have been successfully processed.', signal_count)
 
 
 @click.group()
@@ -59,6 +54,8 @@ def flush(signal_names, exclude, wait, repeat):
 
     signalbus = current_app.extensions['signalbus']
     models_to_flush = _get_models_to_flush(signalbus, signal_names, exclude)
+    logger = logging.getLogger(__name__)
+    logger.info('Started flushing %s.', ', '.join(m.__name__ for m in models_to_flush))
 
     while True:
         started_at = time.time()
@@ -68,11 +65,10 @@ def flush(signal_names, exclude, wait, repeat):
             else:
                 signal_count = signalbus.flush(models_to_flush)
         except Exception:
-            logger = logging.getLogger(__name__)
             logger.exception('Caught error while sending pending signals.')
             sys.exit(1)
 
-        _report_signal_count(signal_count)
+        report_signal_count(signal_count)
 
         if repeat is None:
             break
@@ -106,17 +102,18 @@ def flushmany(signal_names, exclude, repeat):
 
     signalbus = current_app.extensions['signalbus']
     models_to_flush = _get_models_to_flush(signalbus, signal_names, exclude)
+    logger = logging.getLogger(__name__)
+    logger.info('Started flushing %s.', ', '.join(m.__name__ for m in models_to_flush))
 
     while True:
         started_at = time.time()
         try:
             signal_count = signalbus.flushmany(models_to_flush)
         except Exception:
-            logger = logging.getLogger(__name__)
             logger.exception('Caught error while sending pending signals.')
             sys.exit(1)
 
-        _report_signal_count(signal_count)
+        report_signal_count(signal_count)
 
         if repeat is None:
             break
@@ -145,17 +142,18 @@ def flushordered(signal_names, exclude, repeat):
 
     signalbus = current_app.extensions['signalbus']
     models_to_flush = _get_models_to_flush(signalbus, signal_names, exclude)
+    logger = logging.getLogger(__name__)
+    logger.info('Started flushing %s.', ', '.join(m.__name__ for m in models_to_flush))
 
     while True:
         started_at = time.time()
         try:
             signal_count = signalbus.flushordered(models_to_flush)
         except Exception:
-            logger = logging.getLogger(__name__)
             logger.exception('Caught error while sending pending signals.')
             sys.exit(1)
 
-        _report_signal_count(signal_count)
+        report_signal_count(signal_count)
 
         if repeat is None:
             break

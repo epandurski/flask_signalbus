@@ -1,8 +1,14 @@
+import logging
 import time
 from functools import wraps
 from sqlalchemy.exc import DBAPIError
 
-__all__ = ['DEADLOCK_ERROR_CODES', 'DBSerializationError', 'get_db_error_code', 'retry_on_deadlock']
+__all__ = [
+    'DEADLOCK_ERROR_CODES',
+    'DBSerializationError',
+    'get_db_error_code',
+    'retry_on_deadlock',
+]
 
 
 DEADLOCK_ERROR_CODES = ['40001', '40P01']
@@ -53,3 +59,11 @@ def retry_on_deadlock(session, retries=7, min_wait=0.1, max_wait=10.0):
         return f
 
     return decorator
+
+
+def report_signal_count(signal_count):
+    logger = logging.getLogger(__name__)
+    if signal_count == 1:
+        logger.info('%i signal has been successfully processed.', signal_count)
+    elif signal_count > 1:
+        logger.info('%i signals have been successfully processed.', signal_count)

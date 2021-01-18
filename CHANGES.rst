@@ -1,6 +1,12 @@
 Changelog
 =========
 
+Version 0.5.6
+-------------
+
+- Minor logging improvements.
+
+
 Version 0.5.5
 -------------
 

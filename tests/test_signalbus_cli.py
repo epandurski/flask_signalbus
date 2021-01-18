@@ -14,13 +14,16 @@ def test_flush_pending_explicit(app, signalbus_with_pending_signal, caplog):
     runner = app.test_cli_runner()
     runner.invoke(args=['signalbus', 'flush', '--wait', '0', 'Signal'])
     assert '1 signal has been successfully processed' in caplog.text
+    assert "Started flushing Signal." in caplog.text
 
 
 def test_flush_pending_explicit_wrong_name(app, signalbus_with_pending_signal, caplog):
     runner = app.test_cli_runner()
     result = runner.invoke(args=['signalbus', 'flush', '--wait', '0', 'WrongSignalName'])
+    result.exit_code == 0
     assert '1 signal has been successfully processed' not in caplog.text
-    assert 'Warning' in result.output
+    assert 'WARNING' in caplog.text
+    assert 'A signal with name "WrongSignalName" does not exist.' in caplog.text
 
 
 def test_flush_pending_exclude(app, signalbus_with_pending_signal):
@@ -32,7 +35,9 @@ def test_flush_pending_exclude(app, signalbus_with_pending_signal):
 def test_flush_pending_exclude_wrong_name(app, signalbus_with_pending_signal, caplog):
     runner = app.test_cli_runner()
     result = runner.invoke(args=['signalbus', 'flush', '--wait', '0', '--exclude', 'WrongSignalName'])
-    assert 'Warning' in result.output
+    result.exit_code == 0
+    assert 'WARNING' in caplog.text
+    assert 'A signal with name "WrongSignalName" does not exist.' in caplog.text
     assert '1 signal has been successfully processed' in caplog.text
 
 
@@ -58,6 +63,7 @@ def test_flushmany_empty(app, signalbus, Signal):
 def test_flushmany_pending(app, signalbus_with_pending_signal, caplog):
     runner = app.test_cli_runner()
     runner.invoke(args=['signalbus', 'flushmany'])
+    assert "Started flushing Signal." in caplog.text
     assert '1 signal has been successfully processed' in caplog.text
 
 
@@ -78,3 +84,4 @@ def test_flushordered_pending(app, signalbus_with_pending_signal, caplog):
     runner = app.test_cli_runner()
     runner.invoke(args=['signalbus', 'flushordered'])
     assert '1 signal has been successfully processed' in caplog.text
+    assert "Started flushing Signal." in caplog.text
