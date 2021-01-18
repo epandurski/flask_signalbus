@@ -57,9 +57,11 @@ def flush(signal_names, exclude, wait, repeat):
 
     """
 
+    signalbus = current_app.extensions['signalbus']
+    models_to_flush = _get_models_to_flush(signalbus, signal_names, exclude)
+
     while True:
-        signalbus = current_app.extensions['signalbus']
-        models_to_flush = _get_models_to_flush(signalbus, signal_names, exclude)
+        started_at = time.time()
         try:
             if wait is not None:
                 signal_count = signalbus.flush(models_to_flush, wait=max(0.0, wait))
@@ -69,11 +71,13 @@ def flush(signal_names, exclude, wait, repeat):
             logger = logging.getLogger(__name__)
             logger.exception('Caught error while sending pending signals.')
             sys.exit(1)
+
         _report_signal_count(signal_count)
+
         if repeat is None:
             break
         else:
-            time.sleep(max(0.0, repeat))
+            time.sleep(max(0.0, repeat + started_at - time.time()))
 
 
 @signalbus.command()
@@ -100,20 +104,24 @@ def flushmany(signal_names, exclude, repeat):
 
     """
 
+    signalbus = current_app.extensions['signalbus']
+    models_to_flush = _get_models_to_flush(signalbus, signal_names, exclude)
+
     while True:
-        signalbus = current_app.extensions['signalbus']
-        models_to_flush = _get_models_to_flush(signalbus, signal_names, exclude)
+        started_at = time.time()
         try:
             signal_count = signalbus.flushmany(models_to_flush)
         except Exception:
             logger = logging.getLogger(__name__)
             logger.exception('Caught error while sending pending signals.')
             sys.exit(1)
+
         _report_signal_count(signal_count)
+
         if repeat is None:
             break
         else:
-            time.sleep(max(0.0, repeat))
+            time.sleep(max(0.0, repeat + started_at - time.time()))
 
 
 @signalbus.command()
@@ -135,20 +143,24 @@ def flushordered(signal_names, exclude, repeat):
 
     """
 
+    signalbus = current_app.extensions['signalbus']
+    models_to_flush = _get_models_to_flush(signalbus, signal_names, exclude)
+
     while True:
-        signalbus = current_app.extensions['signalbus']
-        models_to_flush = _get_models_to_flush(signalbus, signal_names, exclude)
+        started_at = time.time()
         try:
             signal_count = signalbus.flushordered(models_to_flush)
         except Exception:
             logger = logging.getLogger(__name__)
             logger.exception('Caught error while sending pending signals.')
             sys.exit(1)
+
         _report_signal_count(signal_count)
+
         if repeat is None:
             break
         else:
-            time.sleep(max(0.0, repeat))
+            time.sleep(max(0.0, repeat + started_at - time.time()))
 
 
 @signalbus.command()

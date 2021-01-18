@@ -1,6 +1,12 @@
 Changelog
 =========
 
+Version 0.5.5
+-------------
+
+- Minor change in the way the "--reapeat" parameter works.
+
+
 Version 0.5.4
 -------------
 
