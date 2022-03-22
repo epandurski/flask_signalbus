@@ -171,11 +171,16 @@ class AtomicProceduresMixin(object):
             session_info = session.info
             if session_info.get(_ATOMIC_FLAG_SESSION_INFO_KEY):
                 return func(*args, **kwargs)
-            f = retry_on_deadlock(session)(func)
+
+            @retry_on_deadlock(session)
+            def f(*args, **kwargs):
+                r = func(*args, **kwargs)
+                session.flush()
+                return r
+
             session_info[_ATOMIC_FLAG_SESSION_INFO_KEY] = True
             try:
                 result = f(*args, **kwargs)
-                session.flush()
                 session.expunge_all()
                 session.commit()
                 return result

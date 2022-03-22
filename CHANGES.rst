@@ -1,6 +1,13 @@
 Changelog
 =========
 
+Version 0.5.7
+-------------
+
+- Fixed bug in the `atomic` decorator. Before this fix, not all
+  database serialization errors resulted in a retry.
+
+
 Version 0.5.6
 -------------
 
