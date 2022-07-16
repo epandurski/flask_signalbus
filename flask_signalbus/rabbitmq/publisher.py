@@ -33,7 +33,7 @@ class RabbitmqPublisher(object):
         state.exchange = ''
         state.routing_key = ''
         state.message_number = 0
-        state.deliveries = set()
+        state.deliveries = None
         if app is not None:
             self.init_app(app)
 
@@ -49,14 +49,14 @@ class RabbitmqPublisher(object):
         return self._state.channel
 
     @_channel.setter
-    def _channel(self, value):
+    def _channel(self, new_channel):
         state = self._state
         old_channel = state.channel
-        if value is not old_channel:
+        if new_channel is not old_channel:
             if not (old_channel is None or old_channel.is_closed or old_channel.is_closing):
                 old_channel.close()
-            state.channel = value
-            state.deliveries = set()
+            state.channel = new_channel
+            state.deliveries = None
             state.message_number = 0
 
     def _get_connection(self):
@@ -162,6 +162,9 @@ class RabbitmqPublisher(object):
         confirmation_type = method_frame.method.NAME.split('.')[1].lower()
         ack_multiple = method_frame.method.multiple
         delivery_tag = method_frame.method.delivery_tag
+        channel_number = method_frame.channel_number
+
+        assert(self._channel.channel_number == channel_number)
 
         LOGGER.debug('Received %s for delivery tag: %i (multiple: %s)',
                      confirmation_type, delivery_tag, ack_multiple)
