@@ -21,4 +21,4 @@ def test_publisher(publisher):
     publisher.publish_messages([message], '', 'test')
     publisher.publish_messages([message, message], '', 'test')
     time.sleep(20)
-    publisher.publish_messages([message], '', 'test')
+    publisher.publish_messages([message], '', 'test', timeout=60)
