@@ -13,7 +13,7 @@ class DeliveryError(Exception):
 
 
 class RabbitmqPublisher(object):
-    def __init__(self, app):
+    def __init__(self, app=None):
         self._state = local()
         if app is not None:
             self.init_app(app)
@@ -28,12 +28,12 @@ class RabbitmqPublisher(object):
         """The channel for the current thread. This property may change
         without notice.
         """
-        return self._state.get('channel')
+        return getattr(self._state, 'channel', None)
 
     @_channel.setter
     def _channel(self, new_channel):
         state = self._state
-        old_channel = state.get('channel')
+        old_channel = getattr(state, 'channel', None)
         if new_channel is not old_channel:
             if not (old_channel is None or old_channel.is_closed or old_channel.is_closing):
                 old_channel.close()
@@ -43,7 +43,7 @@ class RabbitmqPublisher(object):
     def _get_connection(self):
         """Return the RabbitMQ connection for the current thread.
         """
-        connection = self._state.get('connection')
+        connection = getattr(self._state, 'connection', None)
         if connection is None:
             LOGGER.info('Connecting to %s', self._url)
 
@@ -60,7 +60,7 @@ class RabbitmqPublisher(object):
 
     def _kill_connection(self):
         self._channel = None
-        connection = self._state.get('connection')
+        connection = getattr(self._state, 'connection', None)
         if connection is not None:
             if not (connection.is_closed or connection.is_closing):
                 connection.close()
@@ -86,7 +86,7 @@ class RabbitmqPublisher(object):
         """
         LOGGER.error('Connection open failed: %s', err)
         troubled_connection.ioloop.stop()
-        if self._state.get('connection') is troubled_connection:
+        if getattr(self._state, 'connection', None) is troubled_connection:
             self._kill_connection()
 
     def _on_connection_closed(self, closed_connection, reason):
@@ -96,7 +96,7 @@ class RabbitmqPublisher(object):
         """
         LOGGER.info('Connection closed: %s', reason)
         closed_connection.ioloop.stop()
-        if self._state.get('connection') is closed_connection:
+        if getattr(self._state, 'connection', None) is closed_connection:
             self._kill_connection()
 
     def _on_channel_open(self, channel):
@@ -146,7 +146,7 @@ class RabbitmqPublisher(object):
         LOGGER.debug('Received %s for delivery tag: %i (multiple: %s)',
                      medhod_name, delivery_tag, multiple)
 
-        connection = state.get('connection')
+        connection = getattr(state, 'connection', None)
         if connection is None:
             LOGGER.warning(
                 'A message delivery confirmation will be ignored because a connection '
@@ -158,11 +158,11 @@ class RabbitmqPublisher(object):
 
         self._mark_as_confirmed(delivery_tag, multiple)
 
-        if not state.get('pending_deliveries'):
+        if not getattr(state, 'pending_deliveries', None):
             connection.ioloop.stop()
 
     def _mark_as_confirmed(self, delivery_tag, ack_multiple):
-        pending_deliveries = self._state.get('pending_deliveries')
+        pending_deliveries = getattr(self._state, 'pending_deliveries', None)
         if pending_deliveries:
             if ack_multiple:
                 for tag in list(pending_deliveries):
@@ -230,11 +230,11 @@ class RabbitmqPublisher(object):
                 connection.ioloop.start()
             raise
 
-        error = state.get('delivery_error')
+        error = getattr(state, 'delivery_error', None)
         if error is not None:
             raise DeliveryError(error)
 
-        if state.get('pending_deliveries'):
+        if getattr(state, 'pending_deliveries', None):
             raise DeliveryError('missing delivery confirmations')
 
         # If at the end of the ioloop the connection is closed, most
