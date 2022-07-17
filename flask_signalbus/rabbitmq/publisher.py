@@ -25,43 +25,37 @@ class RabbitmqPublisher(object):
     """
 
     def __init__(self, app):
-        self._url = ''
-        self._state = state = local()
-        state.connection = None
-        state.channel = None
-        state.messages = []
-        state.exchange = ''
-        state.routing_key = ''
-        state.message_number = 0
-        state.deliveries = None
+        self._state = local()
         if app is not None:
             self.init_app(app)
 
     def init_app(self, app):
         self.app = app
         self._url = app.config['FLASK_SIGNALBUS_AMQP_URL']
+        self._kill_connection()
 
     @property
     def _channel(self):
         """The channel for the current thread. This property may change
         without notice.
         """
-        return self._state.channel
+        return self._state.get('channel')
 
     @_channel.setter
     def _channel(self, new_channel):
         state = self._state
-        old_channel = state.channel
+        old_channel = state.get('channel')
         if new_channel is not old_channel:
             if not (old_channel is None or old_channel.is_closed or old_channel.is_closing):
                 old_channel.close()
             state.channel = new_channel
             state.deliveries = None
+            state.delivery_error = None
             state.message_number = 0
 
     def _get_connection(self):
         """Return the RabbitMQ connection for the current thread."""
-        connection = self._state.connection
+        connection = self._state.get('connection')
         if connection is None:
             LOGGER.info('Connecting to %s', self._url)
 
@@ -78,7 +72,7 @@ class RabbitmqPublisher(object):
 
     def _kill_connection(self):
         self._channel = None
-        connection = self._state.connection
+        connection = self._state.get('connection')
         if connection is not None:
             if not (connection.is_closed or connection.is_closing):
                 connection.close()
@@ -159,37 +153,30 @@ class RabbitmqPublisher(object):
         a delivery confirmation of from the list used to keep track of messages
         that are pending confirmation.
         """
+        state = self._state
         confirmation_type = method_frame.method.NAME.split('.')[1].lower()
         ack_multiple = method_frame.method.multiple
         delivery_tag = method_frame.method.delivery_tag
-        channel_number = method_frame.channel_number
-
-        assert(self._channel.channel_number == channel_number)
-
         LOGGER.debug('Received %s for delivery tag: %i (multiple: %s)',
                      confirmation_type, delivery_tag, ack_multiple)
 
-        if confirmation_type == 'ack':
-            self._acked += 1
-        elif confirmation_type == 'nack':
-            self._nacked += 1
+        connection = state.get('connection')
+        if connection is None:
+            return
 
-        del self._deliveries[delivery_tag]
+        if self._mark_as_delivered(delivery_tag, ack_multiple) and confirmation_type != 'ack':
+            state.delivery_error = f'received {confirmation_type}'
 
+        if not state.get('deliveries'):
+            connection.ioloop.stop()
+
+    def _mark_as_delivered(self, deliveries, delivery_tag, ack_multiple):
         if ack_multiple:
-            for tmp_tag in list(self._deliveries.keys()):
-                if tmp_tag <= delivery_tag:
-                    self._acked += 1
-                    del self._deliveries[tmp_tag]
-        """
-        NOTE: at some point you would check self._deliveries for stale
-        entries and decide to attempt re-delivery
-        """
-
-        LOGGER.info(
-            'Published %i messages, %i have yet to be confirmed, '
-            '%i were acked and %i were nacked', self._message_number,
-            len(self._deliveries), self._acked, self._nacked)
+            for tag in list(deliveries):
+                if tag <= delivery_tag:
+                    deliveries.discard(tag)
+        else:
+            deliveries.discard(delivery_tag)
 
     def _send_messages(self, channel):
         """Publish a message to RabbitMQ, appending a set of deliveries with
@@ -204,6 +191,7 @@ class RabbitmqPublisher(object):
         old_message_number = state.message_number
         new_message_number = old_message_number + len(messages)
         state.deliveries = set(range(old_message_number + 1, new_message_number + 1))
+        state.delivery_error = None
         state.message_number = new_message_number
         for m in messages:
             channel.basic_publish(exchange, routing_key, m.body, m.properties)
@@ -229,9 +217,12 @@ class RabbitmqPublisher(object):
         received for each of the messages.
         """
         state = self._state
-        state.messages = list(messages)
+        state.messages = messages if (type(messages) is list) else list(messages)
         state.exchange = exchange
         state.routing_key = routing_key
+
+        if len(state.messages) == 0:
+            return
 
         channel = self._channel
         if channel is not None and channel.is_open:
@@ -239,6 +230,7 @@ class RabbitmqPublisher(object):
 
         connection = self._get_connection()
         try:
+            # TODO: Set a timeout.
             connection.ioloop.start()
         except KeyboardInterrupt:
             if not (connection.is_closed or connection.is_closing):
@@ -253,7 +245,7 @@ class RabbitmqPublisher(object):
         # probably the connection has timed out. In this case, we
         # should retry with a fresh connection, but only once.
         if connection.is_closed and allow_retry:
-            return self.publish_messages(messages, exchange, routing_key, allow_retry=False)
+            return self.publish_messages(state.messages, exchange, routing_key, allow_retry=False)
 
 
 def main():
