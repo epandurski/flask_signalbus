@@ -145,32 +145,35 @@ class RabbitmqPublisher(object):
 
     def _on_delivery_confirmation(self, method_frame):
         """Invoked by pika when RabbitMQ responds to a Basic.Publish RPC
-        command, passing in either a Basic.Ack or Basic.Nack frame with
-        the delivery tag of the message that was published. The delivery tag
-        is an integer counter indicating the message number that was sent
-        on the channel via Basic.Publish. Here we're just doing house keeping
-        to keep track of stats and remove message numbers that we expect
-        a delivery confirmation of from the list used to keep track of messages
-        that are pending confirmation.
+        command, passing in either a Basic.Ack or Basic.Nack frame
+        with the delivery tag of the message that was published. The
+        delivery tag is an integer counter indicating the message
+        number that was sent on the channel via Basic.Publish.
         """
         state = self._state
         confirmation_type = method_frame.method.NAME.split('.')[1].lower()
         ack_multiple = method_frame.method.multiple
         delivery_tag = method_frame.method.delivery_tag
+
+        # TODO: Fix wasteful logging.
         LOGGER.debug('Received %s for delivery tag: %i (multiple: %s)',
                      confirmation_type, delivery_tag, ack_multiple)
 
         connection = state.get('connection')
         if connection is None:
+            LOGGER.warning(
+                'No connection is available in RabbitmqPublisher._on_delivery_confirmation(). '
+                'This should happen very rarely or never.')
             return
 
-        if self._mark_as_delivered(delivery_tag, ack_multiple) and confirmation_type != 'ack':
+        marked_as_confirmed = self._mark_as_confirmed(delivery_tag, ack_multiple)
+        if marked_as_confirmed and confirmation_type != 'ack':
             state.delivery_error = f'received {confirmation_type}'
 
         if not state.get('deliveries'):
             connection.ioloop.stop()
 
-    def _mark_as_delivered(self, deliveries, delivery_tag, ack_multiple):
+    def _mark_as_confirmed(self, deliveries, delivery_tag, ack_multiple):
         if ack_multiple:
             for tag in list(deliveries):
                 if tag <= delivery_tag:
