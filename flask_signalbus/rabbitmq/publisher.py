@@ -129,7 +129,7 @@ class RabbitmqPublisher(object):
         different parameters. In this case, we'll close the connection
         to shutdown the object.
         """
-        LOGGER.warning('Channel %i was closed: %s', closed_channel, reason)
+        LOGGER.info('Channel %i was closed: %s', closed_channel, reason)
         if self._channel is closed_channel:
             self._kill_connection()
 
@@ -236,12 +236,13 @@ class RabbitmqPublisher(object):
         if error is not None:
             raise DeliveryError(error)
 
-        if getattr(state, 'pending_deliveries', None):
-            raise DeliveryError('missing delivery confirmations')
-
         # If at the end of the ioloop the connection is closed, most
         # probably the connection has timed out. In this case, we
         # should retry with a fresh connection, but only once.
         if connection.is_closed and allow_retry:
+            LOGGER.debug('Re-executing publish_messages()')
             return self.publish_messages(state.messages, exchange, routing_key,
                                          timeout=timeout, allow_retry=False)
+
+        if getattr(state, 'pending_deliveries', None):
+            raise DeliveryError('missing delivery confirmations')

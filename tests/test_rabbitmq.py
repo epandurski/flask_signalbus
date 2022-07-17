@@ -1,5 +1,6 @@
 import pytest
 import pika
+import time
 from flask_signalbus.rabbitmq.publisher import RabbitmqPublisher, Message
 
 
@@ -19,3 +20,5 @@ def test_publisher(publisher):
     publisher.publish_messages([], '', 'test')
     publisher.publish_messages([message], '', 'test')
     publisher.publish_messages([message, message], '', 'test')
+    time.sleep(20)
+    publisher.publish_messages([message], '', 'test')
