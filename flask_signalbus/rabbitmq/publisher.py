@@ -1,29 +1,18 @@
-# -*- coding: utf-8 -*-
-# pylint: disable=C0111,C0103,R0205
-
 import logging
 import pika
+import collections
 from threading import local
 
-LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
-              '-35s %(lineno) -5d: %(message)s')
 LOGGER = logging.getLogger(__name__)
+
+Message = collections.namedtuple('Message', ['body', 'properties'])
+
+
+class DeliveryError(Exception):
+    """A failed attempt to deliver messages."""
 
 
 class RabbitmqPublisher(object):
-    """This is an example publisher that will handle unexpected interactions
-    with RabbitMQ such as channel and connection closures.
-
-    If RabbitMQ closes the connection, it will reopen it. You should
-    look at the output, as there are limited reasons why the connection may
-    be closed, which usually are tied to permission related issues or
-    socket timeouts.
-
-    It uses delivery confirmations and illustrates one way to keep track of
-    messages that have been sent and if they've been confirmed by RabbitMQ.
-
-    """
-
     def __init__(self, app):
         self._state = local()
         if app is not None:
@@ -49,12 +38,11 @@ class RabbitmqPublisher(object):
             if not (old_channel is None or old_channel.is_closed or old_channel.is_closing):
                 old_channel.close()
             state.channel = new_channel
-            state.deliveries = None
-            state.delivery_error = None
             state.message_number = 0
 
     def _get_connection(self):
-        """Return the RabbitMQ connection for the current thread."""
+        """Return the RabbitMQ connection for the current thread.
+        """
         connection = self._state.get('connection')
         if connection is None:
             LOGGER.info('Connecting to %s', self._url)
@@ -94,11 +82,11 @@ class RabbitmqPublisher(object):
 
     def _on_connection_open_error(self, troubled_connection, err):
         """This method is called by pika if the connection to RabbitMQ
-        can't be established.
+        can not be established.
         """
         LOGGER.error('Connection open failed: %s', err)
         troubled_connection.ioloop.stop()
-        if self._get_connection() is troubled_connection:
+        if self._state.get('connection') is troubled_connection:
             self._kill_connection()
 
     def _on_connection_closed(self, closed_connection, reason):
@@ -108,7 +96,7 @@ class RabbitmqPublisher(object):
         """
         LOGGER.info('Connection closed: %s', reason)
         closed_connection.ioloop.stop()
-        if self._get_connection() is closed_connection:
+        if self._state.get('connection') is closed_connection:
             self._kill_connection()
 
     def _on_channel_open(self, channel):
@@ -151,40 +139,42 @@ class RabbitmqPublisher(object):
         number that was sent on the channel via Basic.Publish.
         """
         state = self._state
-        confirmation_type = method_frame.method.NAME.split('.')[1].lower()
-        ack_multiple = method_frame.method.multiple
-        delivery_tag = method_frame.method.delivery_tag
-
-        # TODO: Fix wasteful logging.
+        m = method_frame.method
+        medhod_name = m.NAME
+        delivery_tag = m.delivery_tag
+        multiple = m.multiple
         LOGGER.debug('Received %s for delivery tag: %i (multiple: %s)',
-                     confirmation_type, delivery_tag, ack_multiple)
+                     medhod_name, delivery_tag, multiple)
 
         connection = state.get('connection')
         if connection is None:
             LOGGER.warning(
-                'No connection is available in RabbitmqPublisher._on_delivery_confirmation(). '
-                'This should happen very rarely or never.')
+                'A message delivery confirmation will be ignored because a connection '
+                'object is not available. This should happen very rarely, or never.')
             return
 
-        marked_as_confirmed = self._mark_as_confirmed(delivery_tag, ack_multiple)
-        if marked_as_confirmed and confirmation_type != 'ack':
-            state.delivery_error = f'received {confirmation_type}'
+        if medhod_name != 'basic.ack':
+            state.delivery_error = f'received {medhod_name}'
 
-        if not state.get('deliveries'):
+        self._mark_as_confirmed(delivery_tag, multiple)
+
+        if not state.get('pending_deliveries'):
             connection.ioloop.stop()
 
-    def _mark_as_confirmed(self, deliveries, delivery_tag, ack_multiple):
-        if ack_multiple:
-            for tag in list(deliveries):
-                if tag <= delivery_tag:
-                    deliveries.discard(tag)
-        else:
-            deliveries.discard(delivery_tag)
+    def _mark_as_confirmed(self, delivery_tag, ack_multiple):
+        pending_deliveries = self._state.get('pending_deliveries')
+        if pending_deliveries:
+            if ack_multiple:
+                for tag in list(pending_deliveries):
+                    if tag <= delivery_tag:
+                        pending_deliveries.discard(tag)
+            else:
+                pending_deliveries.discard(delivery_tag)
 
     def _send_messages(self, channel):
-        """Publish a message to RabbitMQ, appending a set of deliveries with
-        the message number that was sent. This set will be used to
-        check for delivery confirmations in the
+        """Publish a message to RabbitMQ, creating a set of pending_deliveries
+        with the message number that was sent. This set will be used
+        to check for delivery confirmations in the
         _on_delivery_confirmations method.
         """
         state = self._state
@@ -193,34 +183,28 @@ class RabbitmqPublisher(object):
         messages = state.messages
         old_message_number = state.message_number
         new_message_number = old_message_number + len(messages)
-        state.deliveries = set(range(old_message_number + 1, new_message_number + 1))
+        state.pending_deliveries = set(range(old_message_number + 1, new_message_number + 1))
         state.delivery_error = None
         state.message_number = new_message_number
         for m in messages:
             channel.basic_publish(exchange, routing_key, m.body, m.properties)
         LOGGER.debug('Published %i messages', len(messages))
 
-        # hdrs = {u'مفتاح': u' قيمة', u'键': u'值', u'キー': u'値'}
-        # properties = pika.BasicProperties(app_id='example-publisher',
-        #                                   content_type='application/json',
-        #                                   headers=hdrs)
-
-        # message = u'مفتاح قيمة 键 值 キー 値'
-        # self._channel.basic_publish(self.EXCHANGE, self.ROUTING_KEY,
-        #                             json.dumps(message, ensure_ascii=False),
-        #                             properties)
-        # self._message_number += 1
-        # self._deliveries[self._message_number] = True
-        # LOGGER.info('Published message # %i', self._message_number)
-        # self.schedule_next_message()
-
-    def publish_messages(self, messages, exchange, routing_key, *, allow_retry=True):
+    def publish_messages(self, messages, exchange, routing_key, *, timeout=None, allow_retry=True):
         """Publishes messages to RabbitMQ with delivery confirmation. This
         method blocks until a confirmation from the broker has been
         received for each of the messages.
+
+        >>> headers = {u'header1': u'value1', u'header2': u'value2'}
+        >>> properties = pika.BasicProperties(
+        ....    app_id='example-publisher',
+        ...     content_type='application/json',
+        ...     headers=headers)
+        >>> message = Message(u'Example message', properties)
+        >>> publisher.publish_messages('exchange_name', 'routing_key', [message])
         """
         state = self._state
-        state.messages = messages if (type(messages) is list) else list(messages)
+        state.messages = messages if isinstance(messages, list) else list(messages)
         state.exchange = exchange
         state.routing_key = routing_key
 
@@ -232,8 +216,10 @@ class RabbitmqPublisher(object):
             self._send_messages(channel)
 
         connection = self._get_connection()
+        if timeout is not None:
+            connection.ioloop.call_later(timeout, connection.ioloop.stop)
+
         try:
-            # TODO: Set a timeout.
             connection.ioloop.start()
         except KeyboardInterrupt:
             if not (connection.is_closed or connection.is_closing):
@@ -244,22 +230,16 @@ class RabbitmqPublisher(object):
                 connection.ioloop.start()
             raise
 
+        error = state.get('delivery_error')
+        if error is not None:
+            raise DeliveryError(error)
+
+        if state.get('pending_deliveries'):
+            raise DeliveryError('missing delivery confirmations')
+
         # If at the end of the ioloop the connection is closed, most
         # probably the connection has timed out. In this case, we
         # should retry with a fresh connection, but only once.
         if connection.is_closed and allow_retry:
-            return self.publish_messages(state.messages, exchange, routing_key, allow_retry=False)
-
-
-def main():
-    logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT)
-
-    # Connect to localhost:5672 as guest with the password guest and virtual host "/" (%2F)
-    example = RabbitmqPublisher(
-        'amqp://guest:guest@localhost:5672/%2F?connection_attempts=3&heartbeat=3600'
-    )
-    example.run()
-
-
-if __name__ == '__main__':
-    main()
+            return self.publish_messages(state.messages, exchange, routing_key,
+                                         timeout=timeout, allow_retry=False)
