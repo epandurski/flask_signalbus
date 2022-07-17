@@ -16,4 +16,6 @@ def publisher(app, request):
 @pytest.mark.skip('requires RabbitMQ instance running')
 def test_publisher(publisher):
     message = Message('test message', pika.BasicProperties())
-    publisher.publish_messages([message], '', 'test')
+    publisher.publish_messages([], '', 'test1')
+    publisher.publish_messages([message], '', 'test1')
+    publisher.publish_messages([message, message], '', 'test2')
