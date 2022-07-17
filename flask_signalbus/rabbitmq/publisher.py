@@ -1,9 +1,11 @@
 import logging
 import pika
 import collections
+import re
 from threading import local
 
 LOGGER = logging.getLogger(__name__)
+RE_BASIC_ACK = re.compile('^basic.ack$', re.IGNORECASE)
 
 Message = collections.namedtuple('Message', ['body', 'properties'])
 
@@ -153,7 +155,7 @@ class RabbitmqPublisher(object):
                 'object is not available. This should happen very rarely, or never.')
             return
 
-        if medhod_name != 'basic.ack':
+        if not RE_BASIC_ACK.match(medhod_name):
             state.delivery_error = f'received {medhod_name}'
 
         self._mark_as_confirmed(delivery_tag, multiple)
