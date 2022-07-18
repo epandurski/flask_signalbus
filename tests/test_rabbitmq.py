@@ -15,17 +15,17 @@ def publisher(app, request):
 
 
 def test_delivery_set():
-    s = DeliverySet(10, 20)  # from 1 to 19
+    s = DeliverySet(20, 10)  # from 20 to 29
     assert(not s.all_confirmed)
-    assert(s.confirm(13) is True)
-    assert(s.confirm(13) is False)
+    assert(s.confirm(23) is True)
+    assert(s.confirm(23) is False)
     assert(not s.all_confirmed)
-    assert(s.confirm(0) is False)
+    assert(s.confirm(10) is False)
     assert(not s.all_confirmed)
-    assert(s.confirm(18, multiple=True) is True)
-    assert(s.confirm(14, multiple=False) is False)
+    assert(s.confirm(28, multiple=True) is True)
+    assert(s.confirm(24, multiple=False) is False)
     assert(not s.all_confirmed)
-    assert(s.confirm(19) is True)
+    assert(s.confirm(29) is True)
     assert(s.all_confirmed)
 
 

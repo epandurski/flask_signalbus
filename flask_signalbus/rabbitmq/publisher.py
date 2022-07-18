@@ -12,10 +12,9 @@ MessageProperties = pika.BasicProperties
 
 
 class DeliverySet:
-    def __init__(self, start_tag, end_tag):
+    def __init__(self, start_tag, message_count):
         self.start_tag = start_tag
-        self.end_tag = end_tag
-        self.confirmed_array = [False for _ in range(start_tag, end_tag)]
+        self.confirmed_array = [False for _ in range(start_tag, start_tag + message_count)]
         self.confirmed_count = 0
         self.min_unconfirmed_tag = start_tag
 
@@ -236,11 +235,11 @@ class Publisher:
         exchange = state.exchange
         routing_key = state.routing_key
         messages = state.messages
-        old_message_number = state.message_number
-        new_message_number = old_message_number + len(messages)
-        state.pending_deliveries = DeliverySet(old_message_number + 1, new_message_number + 1)
+
+        n = len(messages)
+        state.pending_deliveries = DeliverySet(state.message_number + 1, n)
         state.received_nack = False
-        state.message_number = new_message_number
+        state.message_number += n
         for m in messages:
             channel.basic_publish(exchange, routing_key, m[0], m[1])
         _LOGGER.debug('Published %i messages', len(messages))
