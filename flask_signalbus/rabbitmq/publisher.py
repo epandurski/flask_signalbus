@@ -11,6 +11,40 @@ Message = collections.namedtuple('Message', ['body', 'properties'])
 MessageProperties = pika.BasicProperties
 
 
+class DeliverySet:
+    def __init__(self, start_tag, end_tag):
+        self.start_tag = start_tag
+        self.end_tag = end_tag
+        self.confirmed_array = [False for _ in range(start_tag, end_tag)]
+        self.confirmed_count = 0
+        self.min_unconfirmed_tag = start_tag
+
+    def confirm(self, delivery_tag, multiple=False):
+        confirmed_array = self.confirmed_array
+        confirmed_count = 0
+        start_tag = self.start_tag
+        idx = delivery_tag - start_tag
+        if multiple:
+            for i in range(self.min_unconfirmed_tag - start_tag, idx + 1):
+                if i >= 0 and confirmed_array[i] is False:
+                    confirmed_array[i] = True
+                    confirmed_count += 1
+            next_tag = delivery_tag + 1
+            if self.min_unconfirmed_tag < next_tag:
+                self.min_unconfirmed_tag = next_tag
+        else:
+            if idx >= 0 and confirmed_array[idx] is False:
+                confirmed_array[idx] = True
+                confirmed_count += 1
+
+        self.confirmed_count += confirmed_count
+        return confirmed_count > 0
+
+    @property
+    def all_confirmed(self):
+        return self.confirmed_count == len(self.confirmed_array)
+
+
 class DeliveryError(Exception):
     """A failed attempt to deliver messages."""
 
@@ -23,7 +57,7 @@ class TimeoutError(DeliveryError):
     """The attempt to deliver messages has timed out."""
 
 
-class Publisher(object):
+class Publisher:
     def __init__(self, app=None, *, url_config_key='SIGNALBUS_RABBITMQ_URL'):
         self._state = local()
         self._url_config_key = url_config_key
@@ -175,49 +209,22 @@ class Publisher(object):
 
         method = method_frame.method
         medhod_name = method.NAME
-        delivery_tag = method.delivery_tag
+        tag = method.delivery_tag
         multiple = method.multiple
         _LOGGER.debug('Received %s for delivery tag: %i (multiple: %s)',
-                      medhod_name, delivery_tag, multiple)
+                      medhod_name, tag, multiple)
 
         if not _RE_BASIC_ACK.match(medhod_name):
             state.received_nack = True
 
-        this_is_the_last_delivery = self._mark_as_confirmed(delivery_tag, multiple)
+        pending = state.pending_deliveries
+        this_is_the_last_delivery = pending.confirm(tag, multiple) and pending.all_confirmed
         if this_is_the_last_delivery:
             if state.received_nack:
                 state.error = DeliveryError('received nack')
             else:
                 state.error = None
             connection.ioloop.stop()
-
-    def _mark_as_confirmed(self, delivery_tag, ack_multiple):
-        """This method tries to find pending unconfirmed deliveries, and mark
-        them as confirmed. It returns `True` if at least one
-        unconfirmed delivery has been confirmed, and there are no
-        pending unconfirmed deliveries left. Otherwise, it returns
-        `False`.
-        """
-        confirmed = False
-        pending_deliveries = getattr(self._state, 'pending_deliveries', None)
-
-        def mark(t):
-            nonlocal confirmed
-            try:
-                pending_deliveries.remove(t)
-                confirmed = True
-            except KeyError:
-                pass
-
-        if pending_deliveries is not None:
-            if ack_multiple:
-                for tag in list(pending_deliveries):
-                    if tag <= delivery_tag:
-                        mark(tag)
-            else:
-                mark(delivery_tag)
-
-        return confirmed and not pending_deliveries
 
     def _send_messages(self, channel):
         """This method publishes messages to RabbitMQ, creating a set of
@@ -231,7 +238,7 @@ class Publisher(object):
         messages = state.messages
         old_message_number = state.message_number
         new_message_number = old_message_number + len(messages)
-        state.pending_deliveries = set(range(old_message_number + 1, new_message_number + 1))
+        state.pending_deliveries = DeliverySet(old_message_number + 1, new_message_number + 1)
         state.received_nack = False
         state.message_number = new_message_number
         for m in messages:
