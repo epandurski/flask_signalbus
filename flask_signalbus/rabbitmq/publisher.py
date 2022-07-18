@@ -1,14 +1,31 @@
 import logging
 import pika
-import collections
 import re
 from threading import local
+from typing import Iterable, Optional, NamedTuple, Union
 
 _LOGGER = logging.getLogger(__name__)
 _RE_BASIC_ACK = re.compile('^basic.ack$', re.IGNORECASE)
 
-Message = collections.namedtuple('Message', ['body', 'properties'])
-MessageProperties = pika.BasicProperties
+
+class MessageProperties(pika.BasicProperties):
+    """Basic message properties
+
+    See :class:`pika.BasicProperties`.
+    """
+
+
+class Message(NamedTuple):
+    """A RabbitMQ message
+
+    This is a `typing.NamedTuple` with two elements. The first element
+    contains the message body, and the second element contains message
+    properties.
+
+    """
+
+    body: Union[str, bytes]
+    properties: MessageProperties
 
 
 class DeliverySet:
@@ -57,6 +74,31 @@ class TimeoutError(DeliveryError):
 
 
 class Publisher:
+    """A RabbitMQ publisher. Each instance maintains a RabbitMQ connection
+    for every thread, and uses it to send messages.
+
+    For example::
+
+        from flask import Flask
+        from flask_sqlalchemy import SQLAlchemy
+        from flask_signalbus import rabbitmq
+
+        app = Flask(__name__)
+
+        headers = {'header1': 'value1', 'header2': 'value2'}
+        properties = rabbitmq.MessageProperties(
+            app_id='example-publisher',
+            content_type='application/json',
+            headers=headers,
+        )
+        m1 = rabbitmq.Message('Message 1', properties)
+        m2 = rabbitmq.Message('Message 2', properties)
+
+        mq = rabbitmq.Publisher(app)
+        mq.publish_messages([m1, m2], exchange='', routing_key='test')
+
+    """
+
     def __init__(self, app=None, *, url_config_key='SIGNALBUS_RABBITMQ_URL'):
         self._state = local()
         self._url_config_key = url_config_key
@@ -244,20 +286,23 @@ class Publisher:
             channel.basic_publish(exchange, routing_key, m[0], m[1])
         _LOGGER.debug('Published %i messages', len(messages))
 
-    def publish_messages(self, messages, exchange, routing_key, *, timeout=None, allow_retry=True):
+    def publish_messages(
+            self,
+            messages: Iterable[Message],
+            exchange: str,
+            routing_key: str,
+            *,
+            timeout: Optional[int] = None,
+            allow_retry: bool = True,
+    ):
         """Publishes messages to RabbitMQ with delivery confirmation. This
         method blocks until a confirmation from the broker has been
         received for each of the messages.
 
-        Example:
-
-        >>> headers = {u'header1': u'value1', u'header2': u'value2'}
-        >>> properties = MessageProperties(
-        ....    app_id='example-publisher',
-        ...     content_type='application/json',
-        ...     headers=headers)
-        >>> message = Message(u'Example message', properties)
-        >>> publisher.publish_messages('exchange_name', 'routing_key', [message])
+        :param messages: messages to publish
+        :param exchange: RabbitMQ exchange
+        :param routing_key: RabbitMQ routing key
+        :param timeout: optional timeout in seconds
         """
         message_list = messages if isinstance(messages, list) else list(messages)
         if len(message_list) == 0:

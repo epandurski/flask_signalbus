@@ -198,3 +198,4 @@ Contents:
 
    cli
    api
+   rabbitmq
