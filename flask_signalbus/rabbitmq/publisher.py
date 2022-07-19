@@ -116,7 +116,7 @@ class Publisher:
                               body='Message 2', properties=properties)
 
         mq = rabbitmq.Publisher(app)
-        mq.publish_messages([m1, m2], exchange='', routing_key='test')
+        mq.publish_messages([m1, m2])
 
     """
 
