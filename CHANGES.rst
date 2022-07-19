@@ -1,6 +1,12 @@
 Changelog
 =========
 
+Version 0.5.10
+--------------
+
+- Fixed packaging issue
+
+
 Version 0.5.9
 -------------
 

@@ -1,5 +1,3 @@
-from . import rabbitmq  # noqa: F401
-
 from flask_signalbus.signalbus import (  # noqa: F401
     SignalBus,
     SignalBusMixin,
