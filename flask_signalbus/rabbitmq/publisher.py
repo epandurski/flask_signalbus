@@ -360,7 +360,7 @@ class Publisher:
         # once.
         if allow_retry and connection.is_closed and not isinstance(error, ConnectionError):
             _LOGGER.debug('Re-executing publish_messages()')
-            return self.publish_messages(message_list, allow_retry=False)
+            return self.publish_messages(message_list, timeout=timeout, allow_retry=False)
 
         if error is not None:
             raise error
