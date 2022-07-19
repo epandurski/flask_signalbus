@@ -61,6 +61,11 @@ class SignalBusMixin(object):
         event.listen(mapper, 'after_configured', _setup_schema(self.Model, self.session))
 
     def init_app(self, app, *args, **kwargs):
+        """Bind the instance to a Flask app object.
+
+        :param app: A Flask app object
+        """
+
         super(SignalBusMixin, self).init_app(app, *args, **kwargs)
         self.signalbus._init_app(app)
 

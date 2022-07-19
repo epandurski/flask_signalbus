@@ -28,7 +28,7 @@ pytest_runner = ['pytest-runner'] if needs_pytest else []
 
 setup(
     name='Flask-SignalBus',
-    version='0.5.7',
+    version='0.5.8',
     url='https://github.com/epandurski/flask_signalbus',
     license='MIT',
     author='Evgeni Pandurski',
@@ -47,6 +47,7 @@ setup(
         'pytest~=6.2',
         'pytest-cov~=2.7',
         'mock~=2.0',
+        'pika~=1.3',
     ],
     classifiers=[
         'Environment :: Web Environment',
@@ -56,8 +57,6 @@ setup(
         'Topic :: Internet :: WWW/HTTP :: Dynamic Content',
         'Topic :: Software Development :: Libraries :: Python Modules',
         'Programming Language :: Python',
-        'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',

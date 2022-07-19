@@ -1,6 +1,12 @@
 Changelog
 =========
 
+Version 0.5.8
+-------------
+
+- Added a `flask_signalbus.rabbitmq` utility module.
+
+
 Version 0.5.7
 -------------
 

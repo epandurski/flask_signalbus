@@ -29,6 +29,7 @@ def app(request):
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['SQLALCHEMY_RECORD_QUERIES'] = True
+    app.config['SIGNALBUS_RABBITMQ_URL'] = '?heartbeat=5'
     return app
 
 
