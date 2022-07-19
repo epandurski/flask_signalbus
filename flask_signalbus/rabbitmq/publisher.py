@@ -24,11 +24,16 @@ class MessageProperties(_BasicProperties):
 
 
 class Message(NamedTuple):
-    """A `tuple` with two elements
+    """A `typing.NamedTuple` representing a RabbitMQ message to be send
 
-    The first element contains the message body, and the second
-    element contains message properties.
+    :param exchange: RabbitMQ exchange name
+    :param routing_key: RabbitMQ routing key
+    :param body: The message's body
+    :param properties: Message properties (see :class:`pika.BasicProperties`)
     """
+
+    exchange: str
+    routing_key: str
     body: Union[str, bytes]
     properties: MessageProperties
 
@@ -105,8 +110,10 @@ class Publisher:
             content_type='application/json',
             headers=headers,
         )
-        m1 = rabbitmq.Message('Message 1', properties)
-        m2 = rabbitmq.Message('Message 2', properties)
+        m1 = rabbitmq.Message(exchange='', routing_key='test',
+                              body='Message 1', properties=properties)
+        m2 = rabbitmq.Message(exchange='', routing_key='test',
+                              body='Message 2', properties=properties)
 
         mq = rabbitmq.Publisher(app)
         mq.publish_messages([m1, m2], exchange='', routing_key='test')
@@ -292,8 +299,6 @@ class Publisher:
         method.
         """
         state = self._state
-        exchange = state.exchange
-        routing_key = state.routing_key
         messages = state.messages
 
         n = len(messages)
@@ -301,14 +306,12 @@ class Publisher:
         state.received_nack = False
         state.message_number += n
         for m in messages:
-            channel.basic_publish(exchange, routing_key, m[0], m[1])
+            channel.basic_publish(m.exchange, m.routing_key, m.body, m.properties)
         _LOGGER.debug('Published %i messages', len(messages))
 
     def publish_messages(
             self,
             messages: Iterable[Message],
-            exchange: str,
-            routing_key: str,
             *,
             timeout: Optional[int] = None,
             allow_retry: bool = True,
@@ -319,8 +322,6 @@ class Publisher:
         broker has been received for each of the messages.
 
         :param messages: The messages to publish
-        :param exchange: RabbitMQ exchange to publish on
-        :param routing_key: RabbitMQ routing key
         :param timeout: Optional timeout in seconds
 
         """
@@ -330,8 +331,6 @@ class Publisher:
 
         state = self._state
         state.messages = message_list
-        state.exchange = exchange
-        state.routing_key = routing_key
         state.error = TimeoutError()
 
         channel = self._channel
@@ -361,8 +360,7 @@ class Publisher:
         # once.
         if allow_retry and connection.is_closed and not isinstance(error, ConnectionError):
             _LOGGER.debug('Re-executing publish_messages()')
-            return self.publish_messages(message_list, exchange, routing_key,
-                                         timeout=timeout, allow_retry=False)
+            return self.publish_messages(message_list, allow_retry=False)
 
         if error is not None:
             raise error

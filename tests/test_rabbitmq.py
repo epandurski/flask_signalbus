@@ -31,9 +31,14 @@ def test_delivery_set():
 
 @pytest.mark.skip('requires RabbitMQ instance running')
 def test_publisher(publisher):
-    message = rabbitmq.Message('test message', rabbitmq.MessageProperties())
-    publisher.publish_messages([], '', 'test')
-    publisher.publish_messages([message], '', 'test')
-    publisher.publish_messages([message, message], '', 'test')
+    message = rabbitmq.Message(
+        body='test message',
+        properties=rabbitmq.MessageProperties(),
+        exchange='',
+        routing_key='test',
+    )
+    publisher.publish_messages([])
+    publisher.publish_messages([message])
+    publisher.publish_messages([message, message])
     time.sleep(20)
-    publisher.publish_messages([message], '', 'test', timeout=60)
+    publisher.publish_messages([message], timeout=60)
