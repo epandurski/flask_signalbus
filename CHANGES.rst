@@ -1,6 +1,12 @@
 Changelog
 =========
 
+Version 0.5.9
+-------------
+
+- Fixed minor importing issues
+
+
 Version 0.5.8
 -------------
 
