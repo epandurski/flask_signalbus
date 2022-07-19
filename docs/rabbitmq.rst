@@ -3,9 +3,7 @@
 
 .. module:: flask_signalbus.rabbitmq
 
-
-The `flask_signalbus.rabbitmq` module contains utilities for
-processing RabbitMQ messages.
+This module contains utilities for processing RabbitMQ messages.
 
 
 Classes
@@ -26,9 +24,12 @@ Exceptions
 
 .. autoclass:: DeliveryError
    :members:
+   :show-inheritance:
 
 .. autoclass:: ConnectionError
    :members:
+   :show-inheritance:
 
 .. autoclass:: TimeoutError
    :members:
+   :show-inheritance:

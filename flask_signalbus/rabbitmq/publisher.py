@@ -16,14 +16,11 @@ class MessageProperties(pika.BasicProperties):
 
 
 class Message(NamedTuple):
-    """A RabbitMQ message
+    """A `tuple` with two elements
 
-    This is a `typing.NamedTuple` with two elements. The first element
-    contains the message body, and the second element contains message
-    properties.
-
+    The first element contains the message body, and the second
+    element contains message properties.
     """
-
     body: Union[str, bytes]
     properties: MessageProperties
 
@@ -74,10 +71,19 @@ class TimeoutError(DeliveryError):
 
 
 class Publisher:
-    """A RabbitMQ publisher. Each instance maintains a RabbitMQ connection
-    for every thread, and uses it to send messages.
+    """A RabbitMQ message publisher
 
-    For example::
+    Each instance maintains a separate RabbitMQ connection in every
+    thread. If a connection has not been used for longer than the
+    heartbeat interval set for the connection, it will be
+    automatically closed. A new connection will be open when needed.
+
+    :param app: Optional Flask app object. If not provided `init_app`
+      must be called later, providing the Flask app object.
+    :param url_config_key: Optional configuration key for the
+      RabbitMQ's connection URL
+
+    Example::
 
         from flask import Flask
         from flask_sqlalchemy import SQLAlchemy
@@ -106,6 +112,10 @@ class Publisher:
             self.init_app(app)
 
     def init_app(self, app):
+        """Bind the instance to a Flask app object.
+
+        :param app: A Flask app object
+        """
         self.app = app
         self._url = app.config[self._url_config_key]
         self._kill_connection()
@@ -259,8 +269,8 @@ class Publisher:
             state.received_nack = True
 
         pending = state.pending_deliveries
-        this_is_the_last_delivery = pending.confirm(tag, multiple) and pending.all_confirmed
-        if this_is_the_last_delivery:
+        pending.confirm(tag, multiple)
+        if pending.all_confirmed:
             if state.received_nack:
                 state.error = DeliveryError('received nack')
             else:
@@ -295,14 +305,16 @@ class Publisher:
             timeout: Optional[int] = None,
             allow_retry: bool = True,
     ):
-        """Publishes messages to RabbitMQ with delivery confirmation. This
-        method blocks until a confirmation from the broker has been
-        received for each of the messages.
+        """Publishes messages, waiting for delivery confirmations.
 
-        :param messages: messages to publish
-        :param exchange: RabbitMQ exchange
+        This method will block until a confirmation from the RabbitMQ
+        broker has been received for each of the messages.
+
+        :param messages: The messages to publish
+        :param exchange: RabbitMQ exchange to publish on
         :param routing_key: RabbitMQ routing key
-        :param timeout: optional timeout in seconds
+        :param timeout: Optional timeout in seconds
+
         """
         message_list = messages if isinstance(messages, list) else list(messages)
         if len(message_list) == 0:
