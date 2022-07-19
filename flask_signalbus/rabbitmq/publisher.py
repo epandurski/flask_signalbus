@@ -106,6 +106,7 @@ class Publisher:
 
         headers = {'header1': 'value1', 'header2': 'value2'}
         properties = rabbitmq.MessageProperties(
+            delivery_mode=2,
             app_id='example-publisher',
             content_type='application/json',
             headers=headers,

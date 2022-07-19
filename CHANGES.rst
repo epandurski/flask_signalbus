@@ -1,6 +1,12 @@
 Changelog
 =========
 
+Version 0.5.11
+--------------
+
+- Change accepted parameters for rabbitmq.Publisher.publish_messages().
+
+
 Version 0.5.10
 --------------
 
