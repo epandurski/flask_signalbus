@@ -3,7 +3,11 @@
 
 .. module:: flask_signalbus.rabbitmq
 
-This module contains utilities for processing RabbitMQ messages.
+.. _Pika: https://pika.readthedocs.io/
+
+
+This module contains utilities for processing RabbitMQ messages. It
+requires `Pika`_ to be installed.
 
 
 Classes
