@@ -230,6 +230,7 @@ class Publisher:
         _LOGGER.info('Channel opened')
         self._channel = channel
         channel.add_on_close_callback(self._on_channel_closed)
+        channel.add_on_return_callback(self._on_return_callback)
 
         # Send the Confirm.Select RPC method to RabbitMQ to enable
         # delivery confirmations on the channel. The only way to turn
@@ -255,6 +256,14 @@ class Publisher:
         _LOGGER.info('Channel %i was closed: %s', closed_channel, reason)
         if self._channel is closed_channel:
             self._kill_connection()
+
+    def _on_return_callback(self, channel, method, properties, body):
+        """This method is invoked by pika when basic_publish is sent a message
+        that has been rejected and returned by the server. For
+        example, this happens when a message with a `mandatory=True`
+        flag can not be routed to any queue.
+        """
+        self._state.returned_messages = True
 
     def _on_delivery_confirmation(self, method_frame):
         """This method is invoked by pika when RabbitMQ responds to a
@@ -293,6 +302,8 @@ class Publisher:
         if pending.all_confirmed:
             if state.received_nack:
                 state.error = DeliveryError('received nack')
+            elif state.returned_messages:
+                state.error = DeliveryError('returned messages')
             else:
                 state.error = None
             connection.ioloop.stop()
@@ -309,6 +320,7 @@ class Publisher:
         n = len(messages)
         state.pending_deliveries = DeliverySet(state.message_number + 1, n)
         state.received_nack = False
+        state.returned_messages = False
         state.message_number += n
         for m in messages:
             channel.basic_publish(m.exchange, m.routing_key, m.body, m.properties, m.mandatory)
