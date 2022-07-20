@@ -1,6 +1,12 @@
 Changelog
 =========
 
+Version 0.5.13
+--------------
+
+- Properly handle returned messages in flask_signalbus.rabbitmq.
+
+
 Version 0.5.12
 --------------
 
