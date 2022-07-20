@@ -1,6 +1,12 @@
 Changelog
 =========
 
+Version 0.5.12
+--------------
+
+- Added Message.mandatory field.
+
+
 Version 0.5.11
 --------------
 

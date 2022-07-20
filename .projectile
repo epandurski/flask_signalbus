@@ -1,0 +1,6 @@
+-/docs/_build
+-/build
+-/Flask_SignalBus.egg-info
+-/.vscode
+-/htmlcov
+-/dist
