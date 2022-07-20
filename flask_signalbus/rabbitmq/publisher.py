@@ -1,7 +1,7 @@
 import logging
 import re
 from threading import local
-from typing import Iterable, Optional, NamedTuple, Union
+from typing import Iterable, Optional, NamedTuple
 
 _LOGGER = logging.getLogger(__name__)
 _RE_BASIC_ACK = re.compile('^basic.ack$', re.IGNORECASE)
@@ -30,12 +30,15 @@ class Message(NamedTuple):
     :param routing_key: RabbitMQ routing key
     :param body: The message's body
     :param properties: Message properties (see :class:`pika.BasicProperties`)
+    :param mandatory: If `True`, requires the message to be added to
+      at least one queue.
     """
 
     exchange: str
     routing_key: str
-    body: Union[str, bytes]
-    properties: MessageProperties
+    body: bytes
+    properties: Optional[MessageProperties] = None
+    mandatory: bool = False
 
 
 class DeliverySet:
@@ -106,7 +109,7 @@ class Publisher:
 
         headers = {'header1': 'value1', 'header2': 'value2'}
         properties = rabbitmq.MessageProperties(
-            delivery_mode=2,
+            delivery_mode=2,  # This makes the message persistent!
             app_id='example-publisher',
             content_type='application/json',
             headers=headers,
@@ -114,7 +117,8 @@ class Publisher:
         m1 = rabbitmq.Message(exchange='', routing_key='test',
                               body='Message 1', properties=properties)
         m2 = rabbitmq.Message(exchange='', routing_key='test',
-                              body='Message 2', properties=properties)
+                              body='Message 2', properties=properties,
+                              mandatory=True)
 
         mq = rabbitmq.Publisher(app)
         mq.publish_messages([m1, m2])
@@ -307,7 +311,7 @@ class Publisher:
         state.received_nack = False
         state.message_number += n
         for m in messages:
-            channel.basic_publish(m.exchange, m.routing_key, m.body, m.properties)
+            channel.basic_publish(m.exchange, m.routing_key, m.body, m.properties, m.mandatory)
         _LOGGER.debug('Published %i messages', len(messages))
 
     def publish_messages(
