@@ -1,6 +1,12 @@
 Changelog
 =========
 
+Version 0.5.16
+--------------
+
+- Fixed documentation build problem.
+
+
 Version 0.5.15
 --------------
 

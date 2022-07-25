@@ -12,7 +12,7 @@ try:
 except ImportError as e:
     # This module can not work without `pika` installed, but at least
     # we can allow Sphinx to successfully import the module.
-    _LOGGER.error(exc_info=e)
+    _LOGGER.error('Pika is not installed.', exc_info=e)
 
 
 class Message(NamedTuple):
