@@ -2,25 +2,17 @@ import logging
 import re
 from threading import local
 from typing import Iterable, Optional, NamedTuple
+from .common import MessageProperties
 
 _LOGGER = logging.getLogger(__name__)
 _RE_BASIC_ACK = re.compile('^basic.ack$', re.IGNORECASE)
 
 try:
     import pika
-    _BasicProperties = pika.BasicProperties
 except ImportError as e:
     # This module can not work without `pika` installed, but at least
     # we can allow Sphinx to successfully import the module.
-    _LOGGER.error(e)
-    _BasicProperties = object
-
-
-class MessageProperties(_BasicProperties):
-    """Basic message properties
-
-    This is an alias for :class:`pika.BasicProperties`.
-    """
+    _LOGGER.error(exc_info=e)
 
 
 class Message(NamedTuple):

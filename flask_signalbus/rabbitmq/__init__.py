@@ -6,3 +6,8 @@ from .publisher import (  # noqa: F401
     ConnectionError,
     TimeoutError,
 )
+
+from .consumer import (  # noqa: F401
+    Consumer,
+    TerminatedConsumtion,
+)

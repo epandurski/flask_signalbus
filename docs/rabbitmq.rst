@@ -22,6 +22,9 @@ Classes
 .. autoclass:: MessageProperties
    :members:
 
+.. autoclass:: Consumer
+   :members:
+
 
 Exceptions
 ``````````
@@ -35,5 +38,9 @@ Exceptions
    :show-inheritance:
 
 .. autoclass:: TimeoutError
+   :members:
+   :show-inheritance:
+
+.. autoclass:: TerminatedConsumtion
    :members:
    :show-inheritance:
