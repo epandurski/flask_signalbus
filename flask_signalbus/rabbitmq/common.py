@@ -7,7 +7,7 @@ except ImportError as e:
     # This module can not work without `pika` installed, but at least
     # we can allow Sphinx to successfully import the module.
     logger = logging.getLogger(__name__)
-    logger.error(exc_info=e)
+    logger.error('Pika is not installed.', exc_info=e)
     _BasicProperties = object
 
 
