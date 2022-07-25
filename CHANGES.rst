@@ -1,6 +1,12 @@
 Changelog
 =========
 
+Version 0.5.14
+--------------
+
+- Added rabbitmq.consumer module.
+
+
 Version 0.5.13
 --------------
 
