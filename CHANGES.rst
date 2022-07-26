@@ -1,6 +1,12 @@
 Changelog
 =========
 
+Version 0.5.17
+--------------
+
+- Improved logging, documentation, tests.
+
+
 Version 0.5.16
 --------------
 

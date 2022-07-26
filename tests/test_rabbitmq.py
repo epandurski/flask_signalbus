@@ -3,6 +3,7 @@ import signal
 import pytest
 import time
 import threading
+from flask import current_app
 from flask_signalbus import rabbitmq
 from flask_signalbus.rabbitmq.publisher import DeliverySet
 
@@ -38,6 +39,7 @@ def consumer(app, request):
             self._messages = []
 
         def process_message(self, *args):
+            assert current_app.name == self.app.name
             self._messages.append(args)
             return True
 
@@ -86,12 +88,21 @@ def test_consumer(consumer, publisher, message):
         consumer.start()
 
     messages = consumer._messages
-    assert len(messages) >= 3
+    n = len(messages)
+    assert n >= 3
     assert messages[-1] == messages[-2] == messages[-3]
     m = messages[-1]
     assert len(m) == 2
     assert m[0] == BODY
     assert m[1] == PROPERTIES
+
+    # call start() again
+    threading.Thread(target=stop_consuming_after_a_while).start()
+    publisher.publish_messages([message])
+
+    with pytest.raises(rabbitmq.TerminatedConsumtion):
+        consumer.start()
+    assert len(consumer._messages) == n + 1
 
 
 @pytest.mark.skip('requires RabbitMQ instance running')

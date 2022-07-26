@@ -23,9 +23,11 @@ class _WorkerThread(threading.Thread):
         self.is_running = False
 
     def stop(self):
+        _LOGGER.info('Stopping worker thread %s', self.name)
         self.is_running = False
 
     def run(self):
+        _LOGGER.info('Starting worker thread %s', self.name)
         self.is_running = True
         app = self.consumer.app
         work_queue = self.consumer._work_queue
@@ -36,19 +38,23 @@ class _WorkerThread(threading.Thread):
                 except queue.Empty:
                     continue
                 self._process_message(*args)
+                work_queue.task_done()
 
     def _process_message(self, channel, method, properties, body):
+        delivery_tag = method.delivery_tag
         try:
+            _LOGGER.debug('Processing message %i', delivery_tag)
             ok = self.process_message(body, properties)
         except Exception as e:
             self.consumer._on_error(self.name, e)
             self.stop()
             return
 
-        delivery_tag = method.delivery_tag
         if ok:
+            _LOGGER.debug('Acknowledging message %i', delivery_tag)
             self.add_callback(partial(channel.basic_ack, delivery_tag=delivery_tag))
         else:
+            _LOGGER.debug('Rejecting message %i', delivery_tag)
             self.add_callback(partial(channel.basic_reject, delivery_tag=delivery_tag, requeue=False))
 
 
@@ -69,8 +75,8 @@ class Consumer():
     threads, created by the consumer instance, after the `start`
     method is called. Each consumer instance maintains a separate
     RabbitMQ connection. If the connection has been closed for some
-    reason, the `start` method will throw an exception, and the
-    instance will become useless.
+    reason, the `start` method will throw an exception. To continue
+    consuming, the `start` method can be called again.
 
     Consumer's parameters are controlled by keys in the
     configuration. For example, if ``config_prefix`` is set to
@@ -82,8 +88,8 @@ class Consumer():
     * ``RABBITMQ_BROKER_QUEUE`` -- the name of the RabbitMQ queue to
       consume from
 
-    * ``RABBITMQ_BROKER_THREADS`` -- the number of worker threads in
-      the pool
+    * ``RABBITMQ_BROKER_THREADS`` -- The number of worker threads in
+      the pool. The default value is 1.
 
     * ``RABBITMQ_BROKER_PREFETCH_SIZE`` -- Specifies the prefetch
       window size. RabbitMQ will send a message in advance if it is
@@ -101,6 +107,8 @@ class Consumer():
 
     def __init__(self, app=None, config_prefix='SIGNALBUS_RABBITMQ'):
         self.config_prefix = config_prefix
+        self._work_queue = None
+        self._connection = None
         if app is not None:
             self.init_app(app)
 
@@ -118,7 +126,9 @@ class Consumer():
         self.prefetch_size = config.get(f'{prefix}_PREFETCH_SIZE', 0)
         self.prefetch_count = config.get(f'{prefix}_PREFETCH_COUNT', 1)
         assert self.threads >= 1
-        self._work_queue = queue.Queue(max(self.prefetch_count // 3, self.threads))
+        assert self.prefetch_size >= 0
+        assert self.prefetch_count >= 0
+        self._purge()
 
     def start(self):
         """Opens a RabbitMQ connection and starts processing messages until
@@ -131,10 +141,15 @@ class Consumer():
         * The `stop` method has been called on the consumer instance.
 
         This method blocks and never returns normally. If one of the
-        previous things happen, an exception will be thrown.
+        previous things happen an `TerminatedConsumtion` exception
+        will be raised. Also, this method may raise
+        `pika.exceptions.AMQPError` when, for some reason, a proper
+        RabbitMQ connection can not be established.
         """
 
+        _LOGGER.info('Consumer started')
         self._stopped = False
+        self._work_queue = queue.Queue(max(self.prefetch_count // 3, self.threads))
         self._connection = pika.BlockingConnection(pika.URLParameters(self.url))
         channel = self._connection.channel()
         channel.basic_qos(self.prefetch_size, self.prefetch_count)
@@ -158,9 +173,7 @@ class Consumer():
             worker.join()
 
         channel.cancel()
-        if self._connection.is_open:
-            self._connection.close()
-
+        self._purge()
         raise TerminatedConsumtion()
 
     def process_message(self, body: bytes, properties: MessageProperties) -> bool:
@@ -192,8 +205,17 @@ class Consumer():
             signal.signal(signal.SIGTERM, consumer.stop)
             consumer.start()
         """
+        _LOGGER.info('Consumer stopped')
         self._stopped = True
 
     def _on_error(self, thread_name, error):
         _LOGGER.error("Exception in thread %s:", thread_name, exc_info=error)
         self.stop()
+
+    def _purge(self):
+        self.stop()
+        self._work_queue = None
+
+        if self._connection is not None and self._connection.is_open:
+            self._connection.close()
+        self._connection = None
