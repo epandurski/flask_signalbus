@@ -71,6 +71,33 @@ class Consumer():
     :param config_prefix: A prefix for the Flask configuration
       settings for this consumer instance.
 
+    :param url: RabbitMQ’s connection URL. If not passed, the value of
+      the ``{config_prefix}_URL`` Flask configuration setting will be
+      used.
+
+    :param queue: The name of the RabbitMQ queue to consume from. If
+      not passed, the value of the ``{config_prefix}_QUEUE`` Flask
+      configuration setting will be used.
+
+    :param threads: The number of worker threads in the pool. If not
+      passed, the value of the ``{config_prefix}_THREADS`` Flask
+      configuration setting will be used (the default is 1).
+
+    :param prefetch_size: Specifies the prefetch window size. RabbitMQ
+      will send a message in advance if it is equal to or smaller in
+      size than the available prefetch size (and also falls into other
+      prefetch limits). If not passed, the value of the
+      ``{config_prefix}_PREFETCH_SIZE`` Flask configuration setting
+      will be used (the default is 0, meaning "no specific limit").
+
+    :param prefetch_count: Specifies a prefetch window in terms of
+      whole messages. This field may be used in combination with the
+      prefetch_size field. A message will only be sent in advance if
+      both prefetch windows allow it. Setting a bigger value may give
+      a performance improvement. If not passed, the value of the
+      ``{config_prefix}_PREFETCH_COUNT`` Flask configuration setting
+      will be used (the default is 1).
+
     The received messages will be processed by a pool of worker
     threads, created by the consumer instance, after the `start`
     method is called. Each consumer instance maintains a separate
@@ -78,35 +105,30 @@ class Consumer():
     reason, the `start` method will throw an exception. To continue
     consuming, the `start` method can be called again.
 
-    Consumer's parameters are controlled by keys in the
-    configuration. For example, if ``config_prefix`` is set to
-    ``"RABBITMQ_BROKER"``, the following Flask configuration keys will
-    be used:
+    This class is meant to be subclassed. For example::
 
-    * ``RABBITMQ_BROKER_URL`` -- RabbitMQ’s connection URL
+        from flask_signalbus import rabbitmq
 
-    * ``RABBITMQ_BROKER_QUEUE`` -- the name of the RabbitMQ queue to
-      consume from
+        class ExampleConsumer(rabbitmq.Consumer):
+            def process_message(self, body, properties):
+                if len(body) == 0:
+                    return False  # Malformed (empty) message
 
-    * ``RABBITMQ_BROKER_THREADS`` -- The number of worker threads in
-      the pool. The default value is 1.
+                # Process the  message here.
 
-    * ``RABBITMQ_BROKER_PREFETCH_SIZE`` -- Specifies the prefetch
-      window size. RabbitMQ will send a message in advance if it is
-      equal to or smaller in size than the available prefetch size
-      (and also falls into other prefetch limits). The default value
-      is zero, meaning “no specific limit”.
-
-    * ``RABBITMQ_BROKER_PREFETCH_COUNT`` -- Specifies a prefetch
-      window in terms of whole messages. This field may be used in
-      combination with the prefetch-size field. A message will only be
-      sent in advance if both prefetch windows allow it. The default
-      value is ``1``. Setting a bigger value may give a performance
-      improvement.
+                return True  # Successfully processed
     """
 
-    def __init__(self, app=None, config_prefix='SIGNALBUS_RABBITMQ'):
+    def __init__(self, app=None, *,
+                 config_prefix='SIGNALBUS_RABBITMQ',
+                 url=None, queue=None, threads=None, prefetch_size=None, prefetch_count=None):
+
         self.config_prefix = config_prefix
+        self.url = url
+        self.queue = queue
+        self.threads = threads
+        self.prefetch_size = prefetch_size
+        self.prefetch_count = prefetch_count
         self._work_queue = None
         self._connection = None
         if app is not None:
@@ -120,11 +142,18 @@ class Consumer():
         config = app.config
         prefix = self.config_prefix
         self.app = app
-        self.url = config[f'{prefix}_URL']
-        self.queue = config[f'{prefix}_QUEUE']
-        self.threads = config.get(f'{prefix}_THREADS', 1)
-        self.prefetch_size = config.get(f'{prefix}_PREFETCH_SIZE', 0)
-        self.prefetch_count = config.get(f'{prefix}_PREFETCH_COUNT', 1)
+
+        if self.url is None:
+            self.url = config[f'{prefix}_URL']
+        if self.queue is None:
+            self.queue = config[f'{prefix}_QUEUE']
+        if self.threads is None:
+            self.threads = config.get(f'{prefix}_THREADS', 1)
+        if self.prefetch_size is None:
+            self.prefetch_size = config.get(f'{prefix}_PREFETCH_SIZE', 0)
+        if self.prefetch_count is None:
+            self.prefetch_count = config.get(f'{prefix}_PREFETCH_COUNT', 1)
+
         assert self.threads >= 1
         assert self.prefetch_size >= 0
         assert self.prefetch_count >= 0

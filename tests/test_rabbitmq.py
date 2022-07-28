@@ -75,6 +75,22 @@ def test_publisher(publisher, message):
     publisher.publish_messages([message], timeout=60)
 
 
+def test_consumer_creation(app):
+    consumer = rabbitmq.Consumer(app, url='url1', queue='q1', threads=2, prefetch_size=10000, prefetch_count=5)
+    assert consumer.url == 'url1'
+    assert consumer.queue == 'q1'
+    assert consumer.threads == 2
+    assert consumer.prefetch_size == 10000
+    assert consumer.prefetch_count == 5
+
+    consumer = rabbitmq.Consumer(app)
+    assert consumer.url == '?heartbeat=5'
+    assert consumer.queue == 'test'
+    assert consumer.threads == 1
+    assert consumer.prefetch_size == 0
+    assert consumer.prefetch_count == 1
+
+
 @pytest.mark.skip('requires RabbitMQ instance running')
 def test_consumer(consumer, publisher, message):
     def stop_consuming_after_a_while():

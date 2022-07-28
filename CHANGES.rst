@@ -1,6 +1,12 @@
 Changelog
 =========
 
+Version 0.5.18
+--------------
+
+- Added more parameters to `rabbitmq.Consumer`'s constructor.
+
+
 Version 0.5.17
 --------------
 
