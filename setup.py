@@ -28,7 +28,7 @@ pytest_runner = ['pytest-runner'] if needs_pytest else []
 
 setup(
     name='Flask-SignalBus',
-    version='0.5.18',
+    version='0.5.19',
     url='https://github.com/epandurski/flask_signalbus',
     license='MIT',
     author='Evgeni Pandurski',
@@ -40,7 +40,7 @@ setup(
     platforms='any',
     setup_requires=pytest_runner,
     install_requires=[
-        'Flask-SQLAlchemy>=1.0',
+        'Flask-SQLAlchemy>=1.0,<3.0',
         'marshmallow-sqlalchemy>=0.22.0',
     ],
     tests_require=[

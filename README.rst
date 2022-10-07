@@ -4,6 +4,9 @@ Flask-SignalBus
 **Flask-SignalBus** adds to Flask-SQLAlchemy the capability to
 *atomically* send messages (signals) over a message bus.
 
+**Important note:** Flask-SignalBus does work with Flask-SQLAlchemy
+2.5, and does not work with Flask-SQLAlchemy 3.0 or later.
+
 The Problem
 ```````````
 

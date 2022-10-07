@@ -25,6 +25,9 @@ Release v\ |release|. (:doc:`cli`, :doc:`api`, `Source Code`_)
 **Flask-SignalBus** adds to `Flask-SQLAlchemy`_ the capability to
 *atomically* send messages (signals) over a message bus.
 
+**Important note:** Flask-SignalBus does work with Flask-SQLAlchemy
+2.5, and does not work with Flask-SQLAlchemy 3.0 or later.
+
 The Problem
 ```````````
 

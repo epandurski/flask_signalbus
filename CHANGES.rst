@@ -1,6 +1,13 @@
 Changelog
 =========
 
+Version 0.5.19
+--------------
+
+- Do not attempt to install Flask-SQLAlchemy 3.0 or later
+  (Flask-SignalBus does not work with them).
+
+
 Version 0.5.18
 --------------
 
