@@ -1,6 +1,13 @@
 Changelog
 =========
 
+Version 0.5.20
+--------------
+
+- Do not attempt to install SQLAlchemy 2.0 or later (Flask-SQLAlchemy
+  2.x does not work with them).
+
+
 Version 0.5.19
 --------------
 
