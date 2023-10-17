@@ -1,6 +1,8 @@
 Flask-SignalBus
 ===============
 
+**THIS REPOSITORY IS NO LONGER MAINTAINED!**
+
 **Flask-SignalBus** adds to Flask-SQLAlchemy the capability to
 *atomically* send messages (signals) over a message bus.
 
